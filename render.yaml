@@ -1,0 +1,39 @@
+services:
+  - type: web
+    name: medikhata-api
+    runtime: node
+    rootDir: BackEnd
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: CORS_ORIGIN
+        sync: false
+      - key: APP_NAME
+        value: MediKhata
+      - key: APP_URL
+        sync: false
+      - key: SUPPORT_EMAIL
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: RESEND_FROM
+        sync: false
+      - key: OTP_EXPIRY_MINUTES
+        value: "10"
+      - key: BCRYPT_ROUNDS
+        value: "12"
+      - key: TRUST_PROXY_HOPS
+        value: "1"
+      - key: COOKIE_SAMESITE
+        value: none

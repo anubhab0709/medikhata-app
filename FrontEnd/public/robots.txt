@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+
+Disallow: /logout
+
+Sitemap: https://medikhata.app/sitemap.xml

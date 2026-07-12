@@ -20,10 +20,17 @@
 6. Health check: `GET /api/health`
 
 ## Frontend (Vercel)
-1. Root directory: `FrontEnd`
-2. Build: `npm run build` · Output: `dist`
-3. Env: `VITE_API_URL=https://your-api.onrender.com/api`
-4. SPA rewrites are in `FrontEnd/vercel.json`
+1. **Root Directory must be `FrontEnd`**  
+   Project → Settings → Build & Development → Root Directory → `FrontEnd`
+2. Framework: Vite  
+   Build Command: `npm run build` (do **not** set `vite build` alone)  
+   Output Directory: `dist`  
+   Install Command: `npm install`
+3. Env: `VITE_API_URL=/api` (proxies to Render via `vercel.json`)  
+   Or: `VITE_API_URL=https://your-api.onrender.com/api`
+4. Turn **off** any Build Command override that says only `vite build`
+
+If Root Directory stays at the repo root, the root `vercel.json` builds `FrontEnd/` automatically.
 
 ## Pre-flight checklist
 - [ ] Rotate any key that ever lived in `.env.example` or chat logs

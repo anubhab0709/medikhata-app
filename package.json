@@ -1,0 +1,7 @@
+{
+  "name": "medikhata-app",
+  "private": true,
+  "scripts": {
+    "build": "npm install --prefix FrontEnd && npm run build --prefix FrontEnd"
+  }
+}

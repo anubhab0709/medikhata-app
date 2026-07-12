@@ -1,0 +1,28 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- High-contrast MediKhata mark for PWA / install icons (opaque whites) -->
+  <defs>
+    <linearGradient id="bg" x1="64" y1="32" x2="448" y2="480" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#3B82F6"/>
+      <stop offset="1" stop-color="#1D4ED8"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+
+  <!-- Khata body -->
+  <rect x="104" y="88" width="272" height="320" rx="36" fill="#FFFFFF" fill-opacity="0.22" stroke="#FFFFFF" stroke-width="16"/>
+  <!-- Spine -->
+  <path d="M176 96v304" stroke="#FFFFFF" stroke-width="16" stroke-linecap="round"/>
+  <!-- Binding dots -->
+  <circle cx="140" cy="176" r="12" fill="#FFFFFF"/>
+  <circle cx="140" cy="248" r="12" fill="#FFFFFF"/>
+  <circle cx="140" cy="320" r="12" fill="#FFFFFF"/>
+  <!-- Entry lines (solid white) -->
+  <rect x="208" y="160" width="128" height="20" rx="10" fill="#FFFFFF"/>
+  <rect x="208" y="216" width="104" height="20" rx="10" fill="#FFFFFF"/>
+  <rect x="208" y="272" width="120" height="20" rx="10" fill="#FFFFFF"/>
+  <rect x="208" y="328" width="88" height="20" rx="10" fill="#FFFFFF"/>
+
+  <!-- Check badge -->
+  <circle cx="376" cy="376" r="88" fill="#FFFFFF"/>
+  <path d="M334 380l28 28 56-60" stroke="#1D4ED8" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

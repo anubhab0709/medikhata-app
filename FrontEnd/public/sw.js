@@ -1,6 +1,6 @@
 /* MediKhata service worker — cache shell for offline launch */
-const CACHE = 'medikhata-shell-v3';
-const PRECACHE = ['/', '/index.html', '/manifest.webmanifest', '/favicon.svg', '/favicon-32.png', '/pwa-192.png'];
+const CACHE = 'medikhata-shell-v4';
+const PRECACHE = ['/', '/index.html', '/manifest.webmanifest', '/favicon.svg', '/favicon-32.png', '/pwa-192.png', '/pwa-maskable-192.png'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(

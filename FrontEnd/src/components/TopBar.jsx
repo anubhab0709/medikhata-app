@@ -2,9 +2,15 @@ import Ico from './Ico.jsx';
 import Logo from './Logo.jsx';
 import { useLang } from '../context/lang.jsx';
 
-export default function TopBar({ active, onNavigate, shopInfo, dueCount }) {
+export default function TopBar({ active, onNavigate, shopInfo, dueCount, onLogout }) {
   const t = useLang();
   const shopName = shopInfo?.shopName || 'Your Shop';
+  const dateLabel = new Date().toLocaleDateString('en-IN', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
   const NAV = [
     { id: 'dashboard', label: t.home, Ic: Ico.Home },
     { id: 'customers', label: t.customers, Ic: Ico.Users },
@@ -55,12 +61,23 @@ export default function TopBar({ active, onNavigate, shopInfo, dueCount }) {
             })}
           </nav>
 
-          <div className="justify-self-end">
-            <div className="rounded-full border border-slate-200 bg-slate-50 px-3.5 py-1.5">
-              <p className="text-xs text-slate-500 font-medium whitespace-nowrap">
-                {new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+          <div className="justify-self-end flex items-center gap-2">
+            <div className="rounded-full border border-slate-200 bg-white px-3.5 py-1.5 shadow-sm">
+              <p className="text-xs text-slate-800 font-semibold whitespace-nowrap tracking-tight">
+                {dateLabel}
               </p>
             </div>
+            {onLogout && (
+              <button
+                type="button"
+                onClick={onLogout}
+                title="Log out"
+                aria-label="Log out"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 hover:border-red-300 transition-colors focus-ring"
+              >
+                <Ico.Logout />
+              </button>
+            )}
           </div>
         </div>
       </div>

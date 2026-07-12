@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef } from 'react';
 import Ico from '../utils/icons.jsx';
 import AddTxnModal from '../components/AddTxnModal.jsx';
+import ConfirmToast from '../components/ConfirmToast.jsx';
 import { fmtCur, formatDate, formatTime } from '../utils/data.js';
 import { downloadCustomerLedgerPdf, openBillOnWhatsApp } from '../utils/billExport.js';
 import { useLang } from '../context/lang.jsx';
@@ -25,7 +26,9 @@ export default function LedgerPage({ customer, shopInfo, onBack, onAddTxn, onEdi
   const [showHeaderMenu, setShowHeaderMenu] = useState(false);
   const [billToast, setBillToast] = useState('');
   const [showMobileActions, setShowMobileActions] = useState(true);
+  const [confirmAction, setConfirmAction] = useState(null);
   const lastScrollTop = useRef(0);
+  const dialHref = `tel:${customer.phone.replace(/\s+/g, '')}`;
   const txnsByMonth = useMemo(() => {
     const sorted = [...customer.transactions].sort((a, b) => new Date(b.date) - new Date(a.date));
     const grouped = new Map();
@@ -105,6 +108,60 @@ export default function LedgerPage({ customer, shopInfo, onBack, onAddTxn, onEdi
     lastScrollTop.current = top;
   };
 
+  const requestCall = () => {
+    setShowHeaderMenu(false);
+    setConfirmAction({
+      type: 'call',
+      title: `Call ${customer.name}?`,
+      message: customer.phone,
+      confirmLabel: 'Open Phone',
+      cancelLabel: 'Cancel',
+      variant: 'primary',
+    });
+  };
+
+  const requestDeleteCustomer = () => {
+    setShowHeaderMenu(false);
+    setConfirmAction({
+      type: 'delete-customer',
+      title: 'Delete this customer?',
+      message: `${customer.name} and all ledger entries will be removed.`,
+      confirmLabel: 'Delete',
+      cancelLabel: 'Cancel',
+      variant: 'danger',
+    });
+  };
+
+  const requestDeleteEntry = () => {
+    setConfirmAction({
+      type: 'delete-entry',
+      title: 'Delete this entry?',
+      message: 'This transaction will be permanently removed.',
+      confirmLabel: 'Delete',
+      cancelLabel: 'Cancel',
+      variant: 'danger',
+      txnId: viewTxn?.id,
+    });
+  };
+
+  const handleConfirm = () => {
+    const action = confirmAction;
+    setConfirmAction(null);
+    if (!action) return;
+    if (action.type === 'call') {
+      window.location.href = dialHref;
+      return;
+    }
+    if (action.type === 'delete-customer') {
+      onDeleteCustomer(customer.id);
+      return;
+    }
+    if (action.type === 'delete-entry' && action.txnId != null) {
+      onDeleteTxn(customer.id, action.txnId);
+      setViewTxn(null);
+    }
+  };
+
   return (
     <div className="flex flex-col h-full overflow-hidden bg-slate-50">
       <div className="bg-white border-b border-slate-200 sticky top-0 z-10">
@@ -140,13 +197,13 @@ export default function LedgerPage({ customer, shopInfo, onBack, onAddTxn, onEdi
 
               {showHeaderMenu && (
                 <div className="absolute right-0 top-10 w-48 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg fade-up-in">
-                  <a
-                    href={`tel:${customer.phone.replace(/\s+/g, '')}`}
-                    onClick={() => setShowHeaderMenu(false)}
-                    className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                  <button
+                    type="button"
+                    onClick={requestCall}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
                   >
                     <Ico.Phone className="w-4 h-4" /> Call Customer
-                  </a>
+                  </button>
                   <button
                     type="button"
                     onClick={() => {
@@ -159,11 +216,7 @@ export default function LedgerPage({ customer, shopInfo, onBack, onAddTxn, onEdi
                   </button>
                   <button
                     type="button"
-                    onClick={() => {
-                      setShowHeaderMenu(false);
-                      const ok = window.confirm('Delete this customer?');
-                      if (ok) onDeleteCustomer(customer.id);
-                    }}
+                    onClick={requestDeleteCustomer}
                     className="flex w-full items-center gap-2 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
                   >
                     <Ico.Trash className="w-4 h-4" /> Delete Customer
@@ -173,14 +226,15 @@ export default function LedgerPage({ customer, shopInfo, onBack, onAddTxn, onEdi
             </div>
 
             <div className="hidden sm:flex items-center gap-1">
-              <a
-                href={`tel:${customer.phone.replace(/\s+/g, '')}`}
+              <button
+                type="button"
+                onClick={requestCall}
                 className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 transition-all"
                 title="Call"
                 aria-label="Call customer"
               >
                 <Ico.Phone className="w-4 h-4" />
-              </a>
+              </button>
               <button
                 type="button"
                 onClick={() => setShowBillSheet(true)}
@@ -192,10 +246,7 @@ export default function LedgerPage({ customer, shopInfo, onBack, onAddTxn, onEdi
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  const ok = window.confirm('Delete this customer?');
-                  if (ok) onDeleteCustomer(customer.id);
-                }}
+                onClick={requestDeleteCustomer}
                 className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-red-600 hover:bg-red-50 transition-all"
                 title="Delete"
                 aria-label="Delete customer"
@@ -387,13 +438,7 @@ export default function LedgerPage({ customer, shopInfo, onBack, onAddTxn, onEdi
                   <Ico.Edit className="w-4 h-4" /> Edit
                 </button>
                 <button
-                  onClick={() => {
-                    const ok = window.confirm('Delete this entry?');
-                    if (ok) {
-                      onDeleteTxn(customer.id, viewTxn.id);
-                      setViewTxn(null);
-                    }
-                  }}
+                  onClick={requestDeleteEntry}
                   className="inline-flex items-center justify-center gap-1.5 border border-red-200 bg-white text-red-600 py-2 px-4 rounded-lg text-sm font-medium hover:bg-red-50 active:scale-[0.98] transition-all"
                 >
                   <Ico.Trash className="w-4 h-4" /> Delete
@@ -495,6 +540,17 @@ export default function LedgerPage({ customer, shopInfo, onBack, onAddTxn, onEdi
       )}
 
       {(modalType || editTxn) && <AddTxnModal customer={customer} initialType={editTxn?.type || modalType} initialTxn={editTxn} onClose={() => { setModalType(null); setEditTxn(null); }} onAdd={txn => { onAddTxn(customer.id, txn); setModalType(null); setEditTxn(null); }} onSave={txn => { onEditTxn(customer.id, txn); setModalType(null); setEditTxn(null); }} />}
+
+      <ConfirmToast
+        open={!!confirmAction}
+        title={confirmAction?.title}
+        message={confirmAction?.message}
+        confirmLabel={confirmAction?.confirmLabel}
+        cancelLabel={confirmAction?.cancelLabel}
+        variant={confirmAction?.variant}
+        onConfirm={handleConfirm}
+        onCancel={() => setConfirmAction(null)}
+      />
     </div>
   );
 }

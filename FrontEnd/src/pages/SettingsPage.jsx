@@ -97,7 +97,7 @@ export default function SettingsPage({ shopInfo, setShopInfo }) {
           </div>
           <div className="flex flex-wrap gap-2">
             {!editing ? (
-              <button type="button" onClick={() => setEditing(true)} className="btn-secondary btn-sm min-h-10 h-10">
+              <button type="button" onClick={() => setEditing(true)} className="btn btn-sm min-h-10 h-10">
                 {t.editProfile}
               </button>
             ) : (
@@ -136,117 +136,8 @@ export default function SettingsPage({ shopInfo, setShopInfo }) {
           </div>
         </div>
 
-        {/* Language + reminder templates */}
-        <section className="card p-4 sm:p-5 space-y-5">
-          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-            <div>
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 flex items-center gap-2">
-                <span className="h-1.5 w-1.5 rounded-full bg-primary-500" /> {t.preferences}
-              </h3>
-              <p className="text-xs text-slate-500 mt-1.5 max-w-2xl">{t.reminderMessagesHint}</p>
-            </div>
-            <button
-              type="button"
-              onClick={handleSavePreferences}
-              disabled={savingPrefs}
-              className="btn btn-sm min-h-10 h-10 shrink-0"
-            >
-              {savingPrefs ? 'Saving...' : t.savePreferences}
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <div>
-              <label className="label">{t.appLanguage}</label>
-              <div className="grid grid-cols-2 gap-1.5 p-1 bg-slate-100 rounded-xl" role="group" aria-label={t.appLanguage}>
-                <button
-                  type="button"
-                  aria-pressed={appLang === 'en'}
-                  onClick={() => handleChange('appLanguage', 'en')}
-                  className={`py-2.5 rounded-lg text-xs font-semibold transition-all focus-ring ${appLang === 'en' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
-                >
-                  {t.english}
-                </button>
-                <button
-                  type="button"
-                  aria-pressed={appLang === 'bn'}
-                  onClick={() => handleChange('appLanguage', 'bn')}
-                  className={`py-2.5 rounded-lg text-xs font-semibold transition-all focus-ring ${appLang === 'bn' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
-                >
-                  {t.bengali}
-                </button>
-              </div>
-            </div>
-            <div>
-              <label className="label">{t.defaultMsgLang}</label>
-              <div className="grid grid-cols-2 gap-1.5 p-1 bg-slate-100 rounded-xl" role="group" aria-label={t.defaultMsgLang}>
-                <button
-                  type="button"
-                  aria-pressed={defaultMsgLang === 'en'}
-                  onClick={() => handleChange('defaultTemplateLang', 'en')}
-                  className={`py-2.5 rounded-lg text-xs font-semibold transition-all focus-ring ${defaultMsgLang === 'en' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
-                >
-                  {t.english}
-                </button>
-                <button
-                  type="button"
-                  aria-pressed={defaultMsgLang === 'bn'}
-                  onClick={() => handleChange('defaultTemplateLang', 'bn')}
-                  className={`py-2.5 rounded-lg text-xs font-semibold transition-all focus-ring ${defaultMsgLang === 'bn' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
-                >
-                  {t.bengali}
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <div className="flex items-center justify-between gap-3 mb-2">
-              <label className="label !mb-0">{t.reminderMessages}</label>
-              <div className="inline-flex rounded-lg bg-slate-100 p-0.5">
-                <button
-                  type="button"
-                  onClick={() => setMsgTab('en')}
-                  className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${msgTab === 'en' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`}
-                >
-                  EN
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setMsgTab('bn')}
-                  className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${msgTab === 'bn' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`}
-                >
-                  বাং
-                </button>
-              </div>
-            </div>
-            {msgTab === 'en' ? (
-              <div>
-                <p className="text-[11px] font-medium text-slate-500 mb-1.5">{t.englishTemplate}</p>
-                <textarea
-                  value={formData.messageEn || DEFAULT_MESSAGE_EN}
-                  onChange={(e) => handleChange('messageEn', e.target.value)}
-                  rows={8}
-                  className="input resize-none !h-auto py-3 text-xs leading-relaxed"
-                  placeholder={DEFAULT_MESSAGE_EN}
-                />
-              </div>
-            ) : (
-              <div>
-                <p className="text-[11px] font-medium text-slate-500 mb-1.5">{t.bengaliTemplate}</p>
-                <textarea
-                  value={formData.messageBn || DEFAULT_MESSAGE_BN}
-                  onChange={(e) => handleChange('messageBn', e.target.value)}
-                  rows={8}
-                  className="input resize-none !h-auto py-3 text-xs leading-relaxed"
-                  placeholder={DEFAULT_MESSAGE_BN}
-                />
-              </div>
-            )}
-          </div>
-        </section>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        {/* Shop details + Owner side by side */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <section className="card p-4 sm:p-5 space-y-4">
             <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 flex items-center gap-2">
               <span className="h-1.5 w-1.5 rounded-full bg-primary-500" /> Shop details
@@ -275,9 +166,9 @@ export default function SettingsPage({ shopInfo, setShopInfo }) {
             ))}
           </section>
 
-          <section className="card p-5 space-y-4">
+          <section className="card p-4 sm:p-5 space-y-4">
             <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 flex items-center gap-2">
-              <span className="h-1.5 w-1.5 rounded-full bg-primary-500" /> Owner
+              <span className="h-1.5 w-1.5 rounded-full bg-primary-500" /> Owner details
             </h3>
             <div>
               <label className="label">Owner name</label>
@@ -296,40 +187,159 @@ export default function SettingsPage({ shopInfo, setShopInfo }) {
               )}
             </div>
           </section>
+        </div>
 
-          <section className="card p-5 space-y-4 md:col-span-2 xl:col-span-1">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 flex items-center gap-2">
-              <span className="h-1.5 w-1.5 rounded-full bg-primary-500" /> Support
-            </h3>
+        {/* Languages stacked left + reminder template right */}
+        <section className="card p-4 sm:p-5 space-y-5">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+            <div>
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 flex items-center gap-2">
+                <span className="h-1.5 w-1.5 rounded-full bg-primary-500" /> {t.preferences}
+              </h3>
+              <p className="text-xs text-slate-500 mt-1.5 max-w-2xl">{t.reminderMessagesHint}</p>
+            </div>
             <button
               type="button"
-              onClick={() => { setShowContact(true); setContactSent(false); setContactForm({ name: '', email: '', message: '' }); }}
-              className="btn-secondary w-full text-xs"
+              onClick={handleSavePreferences}
+              disabled={savingPrefs}
+              className="btn btn-sm min-h-10 h-10 shrink-0"
             >
-              Send us a message
+              {savingPrefs ? 'Saving...' : t.savePreferences}
             </button>
-            <div className="space-y-3 text-sm">
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-6 items-start">
+            <div className="lg:col-span-4 space-y-4">
               <div>
-                <p className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Phone</p>
-                <a href="tel:+918617569139" className="font-semibold text-slate-800 hover:text-primary-600">+91 86175 69139</a>
+                <label className="label">{t.appLanguage}</label>
+                <div className="grid grid-cols-2 gap-1.5 p-1 bg-slate-100 rounded-xl" role="group" aria-label={t.appLanguage}>
+                  <button
+                    type="button"
+                    aria-pressed={appLang === 'en'}
+                    onClick={() => handleChange('appLanguage', 'en')}
+                    className={`py-2.5 rounded-lg text-xs font-semibold transition-all focus-ring ${appLang === 'en' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+                  >
+                    {t.english}
+                  </button>
+                  <button
+                    type="button"
+                    aria-pressed={appLang === 'bn'}
+                    onClick={() => handleChange('appLanguage', 'bn')}
+                    className={`py-2.5 rounded-lg text-xs font-semibold transition-all focus-ring ${appLang === 'bn' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+                  >
+                    {t.bengali}
+                  </button>
+                </div>
               </div>
               <div>
-                <p className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Email</p>
-                <a href="mailto:khata.app2026@gmail.com" className="font-semibold text-slate-800 break-all hover:text-primary-600">khata.app2026@gmail.com</a>
+                <label className="label">{t.defaultMsgLang}</label>
+                <div className="grid grid-cols-2 gap-1.5 p-1 bg-slate-100 rounded-xl" role="group" aria-label={t.defaultMsgLang}>
+                  <button
+                    type="button"
+                    aria-pressed={defaultMsgLang === 'en'}
+                    onClick={() => handleChange('defaultTemplateLang', 'en')}
+                    className={`py-2.5 rounded-lg text-xs font-semibold transition-all focus-ring ${defaultMsgLang === 'en' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+                  >
+                    {t.english}
+                  </button>
+                  <button
+                    type="button"
+                    aria-pressed={defaultMsgLang === 'bn'}
+                    onClick={() => handleChange('defaultTemplateLang', 'bn')}
+                    className={`py-2.5 rounded-lg text-xs font-semibold transition-all focus-ring ${defaultMsgLang === 'bn' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+                  >
+                    {t.bengali}
+                  </button>
+                </div>
               </div>
             </div>
-            <button type="button" onClick={handleLogout} className="btn-danger w-full text-xs mt-2">
-              Log out
-            </button>
-            <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider text-center">App version 1.0.0</p>
-          </section>
 
-          {REMINDER_AUTOMATION_ENABLED && (
-            <section className="card p-5 md:col-span-2 xl:col-span-3">
-              <p className="text-xs text-slate-500">Reminder automation controls</p>
-            </section>
-          )}
-        </div>
+            <div className="lg:col-span-8">
+              <div className="flex items-center justify-between gap-3 mb-2">
+                <label className="label !mb-0">{t.reminderMessages}</label>
+                <div className="inline-flex rounded-lg bg-slate-100 p-0.5">
+                  <button
+                    type="button"
+                    onClick={() => setMsgTab('en')}
+                    className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${msgTab === 'en' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`}
+                  >
+                    EN
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMsgTab('bn')}
+                    className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${msgTab === 'bn' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`}
+                  >
+                    বাং
+                  </button>
+                </div>
+              </div>
+              {msgTab === 'en' ? (
+                <div>
+                  <p className="text-[11px] font-medium text-slate-500 mb-1.5">{t.englishTemplate}</p>
+                  <textarea
+                    value={formData.messageEn || DEFAULT_MESSAGE_EN}
+                    onChange={(e) => handleChange('messageEn', e.target.value)}
+                    rows={10}
+                    className="input resize-none !h-auto min-h-[220px] py-3 text-xs leading-relaxed"
+                    placeholder={DEFAULT_MESSAGE_EN}
+                  />
+                </div>
+              ) : (
+                <div>
+                  <p className="text-[11px] font-medium text-slate-500 mb-1.5">{t.bengaliTemplate}</p>
+                  <textarea
+                    value={formData.messageBn || DEFAULT_MESSAGE_BN}
+                    onChange={(e) => handleChange('messageBn', e.target.value)}
+                    rows={10}
+                    className="input resize-none !h-auto min-h-[220px] py-3 text-xs leading-relaxed"
+                    placeholder={DEFAULT_MESSAGE_BN}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
+
+        {/* Support */}
+        <section className="card p-4 sm:p-5 space-y-4">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 flex items-center gap-2">
+            <span className="h-1.5 w-1.5 rounded-full bg-primary-500" /> Support
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
+            <div className="space-y-3">
+              <button
+                type="button"
+                onClick={() => { setShowContact(true); setContactSent(false); setContactForm({ name: '', email: '', message: '' }); }}
+                className="btn-secondary w-full text-xs"
+              >
+                Send us a message
+              </button>
+              <div className="space-y-3 text-sm">
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Phone</p>
+                  <a href="tel:+918617569139" className="font-semibold text-slate-800 hover:text-primary-600">+91 86175 69139</a>
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Email</p>
+                  <a href="mailto:khata.app2026@gmail.com" className="font-semibold text-slate-800 break-all hover:text-primary-600">khata.app2026@gmail.com</a>
+                </div>
+              </div>
+            </div>
+            <div className="flex flex-col gap-3 sm:items-end sm:justify-between sm:h-full">
+              <button type="button" onClick={handleLogout} className="btn-danger w-full sm:w-auto text-xs px-6">
+                Log out
+              </button>
+              <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider text-center sm:text-right">App version 1.0.0</p>
+            </div>
+          </div>
+        </section>
+
+        {REMINDER_AUTOMATION_ENABLED && (
+          <section className="card p-5">
+            <p className="text-xs text-slate-500">Reminder automation controls</p>
+          </section>
+        )}
       </div>
 
       {showContact && (

@@ -61,12 +61,12 @@ function ChartPlaceholder({ monthlyCredit, monthlyDebit }) {
           <span className="text-[10px] font-semibold text-emerald-600 uppercase tracking-wider">Collected</span>
         </div>
       </div>
-      <p className="text-[11px] text-center text-slate-500 mt-3">This month · based on loaded entries</p>
+      <p className="text-[11px] text-center text-slate-500 mt-3">This month</p>
     </div>
   );
 }
 
-export default function DashboardPage({ customers, onNavigate, onAddCust, onOpenCustomer, shopInfo }) {
+export default function DashboardPage({ customers, monthlySummary = { credit: 0, debit: 0 }, recentActivity = [], todayActivity: todayActivityProp = [], onNavigate, onAddCust, onOpenCustomer, shopInfo }) {
   const t = useLang();
   const ownerFirstName = (shopInfo?.ownerName || '').trim().split(' ')[0] || 'Shop Owner';
   const overdueAfterDays = Number.isFinite(Number(shopInfo?.markOverdueAfterDays)) ? Math.max(0, Number(shopInfo.markOverdueAfterDays)) : 7;
@@ -86,13 +86,15 @@ export default function DashboardPage({ customers, onNavigate, onAddCust, onOpen
     return { due: Math.round(due), advance: Math.round(advance), dueCount, settledCount };
   }, [customers]);
 
-  const recent = useMemo(
-    () => customers
+  const recent = useMemo(() => {
+    if (Array.isArray(recentActivity) && recentActivity.length > 0) {
+      return recentActivity.slice(0, 8);
+    }
+    return customers
       .flatMap(c => (c.transactions || []).map(tx => ({ ...tx, cName: c.name, cId: c.id })))
       .sort((a, b) => new Date(b.date) - new Date(a.date))
-      .slice(0, 8),
-    [customers],
-  );
+      .slice(0, 8);
+  }, [customers, recentActivity]);
 
   const topDue = useMemo(
     () => [...customers]
@@ -102,37 +104,29 @@ export default function DashboardPage({ customers, onNavigate, onAddCust, onOpen
     [customers],
   );
 
-  const todayActivity = useMemo(
-    () => customers.filter(c => c.lastActivity && new Date(c.lastActivity).toDateString() === todayStr),
-    [customers, todayStr],
-  );
+  const todayActivity = useMemo(() => {
+    if (Array.isArray(todayActivityProp) && todayActivityProp.length > 0) {
+      return todayActivityProp.slice(0, 6);
+    }
+    return customers
+      .filter(c => c.lastActivity && new Date(c.lastActivity).toDateString() === todayStr)
+      .sort((a, b) => new Date(b.lastActivity) - new Date(a.lastActivity))
+      .slice(0, 6);
+  }, [customers, todayActivityProp, todayStr]);
 
-  const monthlySummary = useMemo(() => {
-    const now = new Date();
-    const month = now.getMonth();
-    const year = now.getFullYear();
-    let credit = 0;
-    let debit = 0;
+  const monthCredit = Math.round(Number(monthlySummary?.credit) || 0);
+  const monthDebit = Math.round(Number(monthlySummary?.debit) || 0);
 
-    customers.forEach(c => {
-      (c.transactions || []).forEach(tx => {
-        const d = new Date(tx.date);
-        if (d.getMonth() === month && d.getFullYear() === year) {
-          if (tx.type === 'credit') credit += tx.amount;
-          else debit += tx.amount;
-        }
-      });
-    });
-    return { credit: Math.round(credit), debit: Math.round(debit) };
-  }, [customers]);
-
-  const overdueAfterTwo = useMemo(() => customers
-    .filter(c => c.balance > 0 && (c.reminderCount || 0) >= 2)
-    .map(c => ({
-      ...c,
-      overdueDays: Math.max(0, daysDiff(c.firstReminderAt || c.lastReminded || c.lastActivity || new Date().toISOString()) - overdueAfterDays),
-    }))
-    .sort((a, b) => b.balance - a.balance || b.overdueDays - a.overdueDays)
+  // Overdue = due balance older than markOverdueAfterDays (not "2 reminders sent")
+  const overdueFocus = useMemo(() => customers
+    .filter(c => c.balance > 0)
+    .map(c => {
+      const anchor = c.firstReminderAt || c.lastReminded || c.lastActivity;
+      const overdueDays = Math.max(0, daysDiff(anchor) - overdueAfterDays);
+      return { ...c, overdueDays };
+    })
+    .filter(c => c.overdueDays > 0)
+    .sort((a, b) => b.overdueDays - a.overdueDays || b.balance - a.balance)
     .slice(0, 5), [customers, overdueAfterDays]);
 
   const dateLabel = new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
@@ -233,15 +227,15 @@ export default function DashboardPage({ customers, onNavigate, onAddCust, onOpen
 
             <div className="card-info">
               <h2 className="section-heading mb-3">Monthly collection</h2>
-              <ChartPlaceholder monthlyCredit={monthlySummary.credit} monthlyDebit={monthlySummary.debit} />
+              <ChartPlaceholder monthlyCredit={monthCredit} monthlyDebit={monthDebit} />
               <div className="grid grid-cols-2 gap-3 mt-3">
                 <div className="rounded-lg bg-red-50/60 border border-red-100 px-3 py-2">
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-red-500">Credit added</p>
-                  <p className="text-sm font-bold text-red-700 mt-0.5">{fmtCur(monthlySummary.credit)}</p>
+                  <p className="text-sm font-bold text-red-700 mt-0.5">{fmtCur(monthCredit)}</p>
                 </div>
                 <div className="rounded-lg bg-emerald-50/60 border border-emerald-100 px-3 py-2">
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-600">Collected</p>
-                  <p className="text-sm font-bold text-emerald-700 mt-0.5">{fmtCur(monthlySummary.debit)}</p>
+                  <p className="text-sm font-bold text-emerald-700 mt-0.5">{fmtCur(monthDebit)}</p>
                 </div>
               </div>
             </div>
@@ -252,13 +246,13 @@ export default function DashboardPage({ customers, onNavigate, onAddCust, onOpen
           <div className="card-warning">
             <div className="flex items-center justify-between mb-4">
               <h2 className="section-heading text-amber-800">Overdue focus</h2>
-              <span className="badge badge-overdue">{overdueAfterTwo.length} customers</span>
+              <span className="badge badge-overdue">{overdueFocus.length} customers</span>
             </div>
-            {overdueAfterTwo.length === 0 ? (
+            {overdueFocus.length === 0 ? (
               <p className="text-xs text-amber-600/80 py-6 text-center">No overdue customers right now</p>
             ) : (
               <div className="space-y-2">
-                {overdueAfterTwo.map(c => (
+                {overdueFocus.map(c => (
                   <button key={c.id} type="button" onClick={() => onOpenCustomer?.(c)} className="w-full flex items-center gap-3 rounded-xl border border-amber-100 bg-white px-3 py-2.5 text-left transition-all hover:border-amber-200 focus-ring">
                     <CustomerAvatar name={c.name} balance={c.balance} size="sm" />
                     <div className="min-w-0 flex-1">

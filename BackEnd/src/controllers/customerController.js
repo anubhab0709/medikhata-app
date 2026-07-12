@@ -63,13 +63,148 @@ async function replaceCustomerTransactions(customerId, ownerId, nextTransactions
   }
 }
 
+function toOwnerObjectId(ownerId) {
+  return mongoose.Types.ObjectId.isValid(ownerId)
+    ? new mongoose.Types.ObjectId(String(ownerId))
+    : null;
+}
+
+async function buildDashboardExtras(ownerId) {
+  const oid = toOwnerObjectId(ownerId);
+  if (!oid) {
+    return {
+      monthlySummary: { credit: 0, debit: 0 },
+      recentActivity: [],
+      todayActivity: [],
+    };
+  }
+
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const dayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+
+  const [monthlyRows, recentRows, todayTxnCustomerIds, todayCustomers] = await Promise.all([
+    Transaction.aggregate([
+      { $match: { ownerId: oid, date: { $gte: monthStart, $lt: monthEnd } } },
+      { $group: { _id: '$type', total: { $sum: '$amount' } } },
+    ]),
+    Transaction.aggregate([
+      { $match: { ownerId: oid } },
+      { $sort: { date: -1 } },
+      { $limit: 8 },
+      {
+        $lookup: {
+          from: 'customers',
+          localField: 'customerId',
+          foreignField: '_id',
+          as: 'customer',
+        },
+      },
+      { $unwind: { path: '$customer', preserveNullAndEmptyArrays: true } },
+      {
+        $project: {
+          _id: 0,
+          id: 1,
+          type: 1,
+          amount: 1,
+          note: 1,
+          date: 1,
+          cName: { $ifNull: ['$customer.name', 'Customer'] },
+          cId: { $toString: '$customerId' },
+        },
+      },
+    ]),
+    Transaction.distinct('customerId', {
+      ownerId: oid,
+      $or: [
+        { date: { $gte: dayStart, $lt: dayEnd } },
+        { updatedAt: { $gte: dayStart, $lt: dayEnd } },
+      ],
+    }),
+    Customer.find({
+      ownerId: oid,
+      $or: [
+        { lastActivity: { $gte: dayStart, $lt: dayEnd } },
+        { updatedAt: { $gte: dayStart, $lt: dayEnd } },
+      ],
+    })
+      .sort({ lastActivity: -1 })
+      .limit(12)
+      .lean(),
+  ]);
+
+  let credit = 0;
+  let debit = 0;
+  for (const row of monthlyRows) {
+    if (row._id === 'credit') credit = Number(row.total) || 0;
+    if (row._id === 'debit') debit = Number(row.total) || 0;
+  }
+
+  const todayMap = new Map();
+  for (const doc of todayCustomers) {
+    todayMap.set(String(doc._id), toClientCustomer(doc, []));
+  }
+
+  const missingTodayIds = todayTxnCustomerIds
+    .map((id) => String(id))
+    .filter((id) => !todayMap.has(id));
+
+  if (missingTodayIds.length > 0) {
+    const extraDocs = await Customer.find({
+      ownerId: oid,
+      _id: { $in: missingTodayIds.filter((id) => mongoose.Types.ObjectId.isValid(id)) },
+    }).lean();
+    for (const doc of extraDocs) {
+      todayMap.set(String(doc._id), toClientCustomer(doc, []));
+    }
+  }
+
+  const todayActivity = Array.from(todayMap.values())
+    .sort((a, b) => new Date(b.lastActivity) - new Date(a.lastActivity))
+    .slice(0, 8);
+
+  return {
+    monthlySummary: {
+      credit: Math.round(credit),
+      debit: Math.round(debit),
+    },
+    recentActivity: recentRows.map((tx) => ({
+      id: tx.id,
+      type: tx.type,
+      amount: tx.amount,
+      note: tx.note || '',
+      date: tx.date ? new Date(tx.date).toISOString() : new Date().toISOString(),
+      cName: tx.cName,
+      cId: tx.cId,
+    })),
+    todayActivity,
+  };
+}
+
 export async function listCustomers(req, res) {
   try {
     // List customers WITHOUT transactions (huge performance boost)
     const docs = await Customer.find({ ownerId: req.user.id }).sort({ updatedAt: -1 });
-    return res.json({ customers: docs.map(doc => toClientCustomer(doc, [])) });
+    const extras = await buildDashboardExtras(req.user.id);
+    return res.json({
+      customers: docs.map(doc => toClientCustomer(doc, [])),
+      monthlySummary: extras.monthlySummary,
+      recentActivity: extras.recentActivity,
+      todayActivity: extras.todayActivity,
+    });
   } catch {
     return res.status(500).json({ message: 'Failed to fetch customers' });
+  }
+}
+
+export async function getDashboardSummary(req, res) {
+  try {
+    const extras = await buildDashboardExtras(req.user.id);
+    return res.json(extras);
+  } catch {
+    return res.status(500).json({ message: 'Failed to fetch dashboard summary' });
   }
 }
 
@@ -179,7 +314,7 @@ export async function addTransaction(req, res) {
     await replaceCustomerTransactions(customer._id, req.user.id, nextTransactions);
 
     customer.balance = nextTransactions.at(-1)?.balance ?? 0;
-    customer.lastActivity = nextTransactions.at(-1)?.date ?? new Date();
+    customer.lastActivity = new Date();
     await customer.save();
 
     return res.status(201).json({ customer: toClientCustomer(customer, nextTransactions) });
@@ -228,7 +363,7 @@ export async function updateTransaction(req, res) {
     await replaceCustomerTransactions(customer._id, req.user.id, nextTransactions);
 
     customer.balance = nextTransactions.at(-1)?.balance ?? 0;
-    customer.lastActivity = nextTransactions.at(-1)?.date ?? new Date();
+    customer.lastActivity = new Date();
     await customer.save();
     
     return res.json({ customer: toClientCustomer(customer, nextTransactions) });
@@ -256,7 +391,7 @@ export async function deleteTransaction(req, res) {
     await replaceCustomerTransactions(customer._id, req.user.id, nextTransactions);
 
     customer.balance = nextTransactions.at(-1)?.balance ?? 0;
-    customer.lastActivity = nextTransactions.at(-1)?.date || customer.lastActivity || new Date();
+    customer.lastActivity = new Date();
     await customer.save();
 
     return res.json({ customer: toClientCustomer(customer, nextTransactions) });

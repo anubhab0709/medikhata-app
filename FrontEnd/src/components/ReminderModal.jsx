@@ -59,7 +59,7 @@ export default function ReminderModal({ customer, onClose, onSent, shopInfo }) {
   return (
     <div className="modal-backdrop fixed inset-0 z-[70] flex items-end sm:items-center justify-center p-0 sm:p-4">
       <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} aria-hidden="true" />
-      <div className="modal-panel relative bg-white w-full max-w-md sm:max-w-3xl sm:rounded-2xl rounded-t-2xl shadow-xl max-h-[92vh] flex flex-col overflow-hidden safe-area-pb" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="reminder-modal-title">
+      <div className="modal-panel relative bg-white w-full max-w-md sm:max-w-4xl sm:rounded-2xl rounded-t-2xl shadow-xl max-h-[92vh] flex flex-col overflow-hidden safe-area-pb" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="reminder-modal-title">
         <div className="mx-auto mt-2 h-1 w-10 rounded-full bg-slate-200 sm:hidden" aria-hidden="true" />
         <div className="bg-white flex items-center justify-between px-4 sm:px-5 pt-3 sm:pt-5 pb-3 border-b border-slate-100 flex-shrink-0">
           <div>
@@ -105,9 +105,14 @@ export default function ReminderModal({ customer, onClose, onSent, shopInfo }) {
               <div>
                 <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">{t.messagePreview}</label>
                 {useCustom ? (
-                  <textarea value={customMsg} onChange={e => setCustomMsg(e.target.value)} rows={9} className="input resize-none py-3 leading-relaxed bg-primary-50/50 border-primary-200 focus:border-primary-400 text-xs" />
+                  <textarea
+                    value={customMsg}
+                    onChange={e => setCustomMsg(e.target.value)}
+                    rows={10}
+                    className="input !h-auto min-h-[220px] sm:min-h-[260px] resize-y py-3 leading-relaxed bg-primary-50/50 border-primary-200 focus:border-primary-400 text-sm w-full"
+                  />
                 ) : (
-                  <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-xs font-medium leading-relaxed whitespace-pre-line text-gray-700 min-h-[200px]">{template}</div>
+                  <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-medium leading-relaxed whitespace-pre-line text-gray-700 min-h-[220px] sm:min-h-[260px]">{template}</div>
                 )}
               </div>
             </div>

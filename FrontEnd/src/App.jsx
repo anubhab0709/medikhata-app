@@ -146,6 +146,9 @@ function AppShell({ initialShopInfo, onReady }) {
   const navigateTo = useNavigate();
   const location = useLocation();
   const [customers, setCustomers] = useState([]);
+  const [monthlySummary, setMonthlySummary] = useState({ credit: 0, debit: 0 });
+  const [recentActivity, setRecentActivity] = useState([]);
+  const [todayActivity, setTodayActivity] = useState([]);
   const [loadingCustomers, setLoadingCustomers] = useState(true);
   const [showAddCust, setShowAddCust] = useState(false);
   const [reminderCust, setReminderCust] = useState(null);
@@ -155,6 +158,30 @@ function AppShell({ initialShopInfo, onReady }) {
     ...(initialShopInfo || {}),
   }));
   const [apiError, setApiError] = useState('');
+
+  const applyDashboardExtras = useCallback((payload) => {
+    if (payload?.monthlySummary) {
+      setMonthlySummary({
+        credit: Math.round(Number(payload.monthlySummary.credit) || 0),
+        debit: Math.round(Number(payload.monthlySummary.debit) || 0),
+      });
+    }
+    if (Array.isArray(payload?.recentActivity)) {
+      setRecentActivity(payload.recentActivity);
+    }
+    if (Array.isArray(payload?.todayActivity)) {
+      setTodayActivity(payload.todayActivity);
+    }
+  }, []);
+
+  const refreshDashboardExtras = useCallback(async () => {
+    try {
+      const extras = await customerApi.dashboardSummary();
+      applyDashboardExtras(extras);
+    } catch {
+      // Keep last known dashboard numbers if refresh fails
+    }
+  }, [applyDashboardExtras]);
 
   const loadCustomers = useCallback(async () => {
     setLoadingCustomers(true);
@@ -172,6 +199,7 @@ function AppShell({ initialShopInfo, onReady }) {
       }
 
       setCustomers(Array.isArray(result?.customers) ? result.customers : []);
+      applyDashboardExtras(result);
     } catch (error) {
       if (error?.status === 401) {
         clearAuthToken();
@@ -182,7 +210,7 @@ function AppShell({ initialShopInfo, onReady }) {
     } finally {
       setLoadingCustomers(false);
     }
-  }, [navigateTo]);
+  }, [applyDashboardExtras, navigateTo]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- mount/bootstrap load
@@ -220,26 +248,30 @@ function AppShell({ initialShopInfo, onReady }) {
   const addTxn = useCallback(async (custId, txn) => {
     const created = await transactionApi.create(custId, txn);
     setCustomers(prev => prev.map(c => (c.id !== custId ? c : created.customer)));
-  }, []);
+    refreshDashboardExtras();
+  }, [refreshDashboardExtras]);
 
   const deleteTxn = useCallback(async (custId, txnId) => {
     const updated = await transactionApi.remove(custId, txnId);
     setCustomers(prev => prev.map(c => (c.id !== custId ? c : updated.customer)));
-  }, []);
+    refreshDashboardExtras();
+  }, [refreshDashboardExtras]);
 
   const deleteCustomer = useCallback(async (custId) => {
     await customerApi.remove(custId);
     setCustomers(prev => prev.filter(c => c.id !== custId));
     setReminderCust(prev => (prev && prev.id === custId ? null : prev));
+    refreshDashboardExtras();
     if (location.pathname.includes(`/app/customers/${custId}`)) {
       navigateTo('/app/customers');
     }
-  }, [location.pathname, navigateTo]);
+  }, [location.pathname, navigateTo, refreshDashboardExtras]);
 
   const editTxn = useCallback(async (custId, nextTxn) => {
     const updated = await transactionApi.update(custId, nextTxn.id, nextTxn);
     setCustomers(prev => prev.map(c => (c.id !== custId ? c : updated.customer)));
-  }, []);
+    refreshDashboardExtras();
+  }, [refreshDashboardExtras]);
 
   const addCust = useCallback(async (customerPayload) => {
     const created = await customerApi.create(customerPayload);
@@ -296,11 +328,18 @@ function AppShell({ initialShopInfo, onReady }) {
   const dueCount = useMemo(() => customers.filter(c => c.balance > 0).length, [customers]);
   const loadingView = loadingCustomers || apiError;
 
+  const handleLogout = useCallback(() => {
+    authApi.logout().catch(() => {}).finally(() => {
+      clearAuthToken();
+      navigateTo('/login', { replace: true });
+    });
+  }, [navigateTo]);
+
   return (
     <LangCtx.Provider value={shopInfo?.appLanguage === 'bn' ? 'bn' : 'en'}>
       <div className="flex flex-col h-screen bg-slate-50 overflow-hidden">
-        <MobileHeader shopInfo={shopInfo} />
-        <TopBar active={navActive} onNavigate={navigate} shopInfo={shopInfo} dueCount={dueCount} />
+        <MobileHeader shopInfo={shopInfo} onLogout={handleLogout} />
+        <TopBar active={navActive} onNavigate={navigate} shopInfo={shopInfo} dueCount={dueCount} onLogout={handleLogout} />
         <main className="flex-1 overflow-hidden flex flex-col">
           <div key={location.pathname} className="flex-1 overflow-hidden flex flex-col fade-up-in">
               {loadingView ? (
@@ -315,7 +354,7 @@ function AppShell({ initialShopInfo, onReady }) {
               ) : (
                 <Suspense fallback={<PageFallback />}>
                   <Routes>
-                    <Route path="dashboard" element={<DashboardPage customers={customers} onNavigate={navigate} onAddCust={() => setShowAddCust(true)} onOpenCustomer={selectCust} shopInfo={shopInfo} />} />
+                    <Route path="dashboard" element={<DashboardPage customers={customers} monthlySummary={monthlySummary} recentActivity={recentActivity} todayActivity={todayActivity} onNavigate={navigate} onAddCust={() => setShowAddCust(true)} onOpenCustomer={selectCust} shopInfo={shopInfo} />} />
                     <Route path="customers" element={<CustomerListPage customers={customers} onSelect={selectCust} onAddCust={() => setShowAddCust(true)} />} />
                     <Route path="customers/:id" element={<LedgerRouteView customers={customers} shopInfo={shopInfo} onBack={() => navigate('customers')} onAddTxn={addTxn} onEditTxn={editTxn} onDeleteTxn={deleteTxn} onDeleteCustomer={deleteCustomer} onOpenReminder={openRem} setCustomers={setCustomers} />} />
                     {REMINDERS_FEATURE_ENABLED && RemindersPage ? (

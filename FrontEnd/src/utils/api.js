@@ -121,6 +121,7 @@ export const authApi = {
 
 export const customerApi = {
   list: () => request('/customers'),
+  dashboardSummary: () => request('/customers/dashboard-summary'),
   get: (customerId) => request(`/customers/${customerId}`),
   create: (body) => request('/customers', { method: 'POST', body: JSON.stringify(body) }),
   remove: (customerId) => request(`/customers/${customerId}`, { method: 'DELETE' }),

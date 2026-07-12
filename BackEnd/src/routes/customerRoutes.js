@@ -5,6 +5,7 @@ import {
   deleteCustomer,
   deleteTransaction,
   getCustomer,
+  getDashboardSummary,
   listCustomers,
   markBulkReminders,
   markCustomerReminder,
@@ -16,6 +17,7 @@ const router = Router();
 router.use(requireAuth);
 
 router.get('/', listCustomers);
+router.get('/dashboard-summary', getDashboardSummary);
 router.get('/:id', getCustomer);
 router.post('/', createCustomer);
 router.delete('/:id', deleteCustomer);

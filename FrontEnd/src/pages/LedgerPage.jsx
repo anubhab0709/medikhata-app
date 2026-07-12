@@ -294,7 +294,7 @@ export default function LedgerPage({ customer, shopInfo, onBack, onAddTxn, onEdi
         </div>
       </div>
 
-      <div onScroll={handleLedgerScroll} className="flex-1 overflow-y-auto page-shell py-3 space-y-3 pb-4">
+      <div onScroll={handleLedgerScroll} className="flex-1 overflow-y-auto page-shell py-3 space-y-3 pb-28 sm:pb-4">
         {txnsByMonth.length === 0 ? (
           <div className="text-center py-16 text-slate-500 flex flex-col items-center">
             <div className="w-14 h-14 bg-slate-100 rounded-2xl flex items-center justify-center mb-4 text-slate-500 border border-slate-200">
@@ -361,9 +361,9 @@ export default function LedgerPage({ customer, shopInfo, onBack, onAddTxn, onEdi
       </div>
 
       <div
-        className={`shrink-0 z-20 border-t border-slate-200 bg-white/95 backdrop-blur-md px-4 pt-3 transition-transform duration-300 sm:px-6 ${
+        className={`fixed sm:static inset-x-0 bottom-0 z-[45] shrink-0 border-t border-slate-200 bg-white/95 backdrop-blur-md px-4 pt-3 transition-transform duration-300 sm:px-6 sm:z-20 ${
           showMobileActions ? 'translate-y-0' : 'translate-y-[110%] sm:translate-y-0'
-        } pb-[calc(4.75rem+env(safe-area-inset-bottom))] sm:pb-4`}
+        } pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:pb-4`}
       >
         <div className="grid grid-cols-2 gap-2.5 max-w-md mx-auto sm:max-w-lg">
           <button
@@ -503,10 +503,11 @@ export default function LedgerPage({ customer, shopInfo, onBack, onAddTxn, onEdi
       )}
 
       {showSettleModal && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4">
+        <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center p-0 sm:p-4">
           <div className="absolute inset-0 bg-gray-900/40 backdrop-blur-sm" onClick={() => setShowSettleModal(false)} />
-          <div className="relative bg-white w-full max-w-sm rounded-2xl shadow-xl overflow-hidden" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-gray-100">
+          <div className="relative bg-white w-full max-w-sm rounded-t-2xl sm:rounded-2xl shadow-xl overflow-hidden safe-area-pb" onClick={e => e.stopPropagation()}>
+            <div className="mx-auto mt-2 h-1 w-10 rounded-full bg-slate-200 sm:hidden" aria-hidden="true" />
+            <div className="flex items-center justify-between px-5 pt-4 sm:pt-5 pb-3 border-b border-gray-100">
               <div>
                 <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider mb-0.5">Settlement</p>
                 <h3 className="text-sm font-semibold text-gray-900">Settle {customer.name}</h3>
@@ -526,11 +527,11 @@ export default function LedgerPage({ customer, shopInfo, onBack, onAddTxn, onEdi
                 <p className="text-[11px] font-medium text-gray-600 mt-1 leading-relaxed">A balancing entry will be created and final balance will become <span className="font-semibold text-gray-900">₹0</span>.</p>
               </div>
 
-              <div className="grid grid-cols-2 gap-2 pt-1">
-                <button onClick={() => setShowSettleModal(false)} className="btn-secondary">
+              <div className="grid grid-cols-2 gap-2.5 pt-1">
+                <button onClick={() => setShowSettleModal(false)} className="btn-secondary min-h-11">
                   Cancel
                 </button>
-                <button onClick={handleSettle} className="btn">
+                <button onClick={handleSettle} className="btn min-h-11">
                   <Ico.Check className="w-4 h-4" /> Settle All
                 </button>
               </div>

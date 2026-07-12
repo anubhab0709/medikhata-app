@@ -62,8 +62,10 @@ export function clearOtpFields(user) {
 }
 
 export function cookieOptions(maxAgeMs = 7 * 24 * 60 * 60 * 1000) {
-  const sameSiteRaw = String(process.env.COOKIE_SAMESITE || 'strict').toLowerCase();
-  const sameSite = ['strict', 'lax', 'none'].includes(sameSiteRaw) ? sameSiteRaw : 'strict';
+  // Cross-site FE/BE (Vercel + Render) needs SameSite=None; Secure
+  const defaultSameSite = process.env.NODE_ENV === 'production' ? 'none' : 'lax';
+  const sameSiteRaw = String(process.env.COOKIE_SAMESITE || defaultSameSite).toLowerCase();
+  const sameSite = ['strict', 'lax', 'none'].includes(sameSiteRaw) ? sameSiteRaw : defaultSameSite;
   const secure = process.env.NODE_ENV === 'production' || sameSite === 'none';
 
   return {

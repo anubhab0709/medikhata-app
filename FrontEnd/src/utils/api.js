@@ -1,4 +1,16 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
+function normalizeApiBase(raw) {
+  let base = String(raw || '/api').trim();
+  if (!base) base = '/api';
+  // Drop trailing slashes so `${base}/auth/login` never becomes `//auth/login`
+  base = base.replace(/\/+$/, '');
+  // Host-only Render/Vercel URLs must include the /api prefix
+  if (/^https?:\/\//i.test(base) && !/\/api$/i.test(base)) {
+    base = `${base}/api`;
+  }
+  return base || '/api';
+}
+
+const API_BASE_URL = normalizeApiBase(import.meta.env.VITE_API_URL);
 const AUTH_STATUS_KEY = 'khata_auth_status';
 const REQUEST_TIMEOUT_MS = 30_000;
 
@@ -18,6 +30,11 @@ const PUBLIC_AUTH_PATHS = new Set([
   '/auth/resend-otp',
 ]);
 
+function apiUrl(path) {
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  return `${API_BASE_URL}${normalizedPath}`;
+}
+
 async function request(path, options = {}) {
   const headers = {
     'Content-Type': 'application/json',
@@ -32,7 +49,7 @@ async function request(path, options = {}) {
 
   let response;
   try {
-    response = await fetch(`${API_BASE_URL}${path}`, {
+    response = await fetch(apiUrl(path), {
       ...options,
       headers,
       credentials: 'include',

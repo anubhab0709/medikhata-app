@@ -327,6 +327,7 @@ function AppShell({ initialShopInfo, onReady }) {
         : 'dashboard';
   const dueCount = useMemo(() => customers.filter(c => c.balance > 0).length, [customers]);
   const loadingView = loadingCustomers || apiError;
+  const isLedgerDetail = /\/app\/customers\/[^/]+/.test(location.pathname);
 
   const handleLogout = useCallback(() => {
     authApi.logout().catch(() => {}).finally(() => {
@@ -369,7 +370,7 @@ function AppShell({ initialShopInfo, onReady }) {
               )}
           </div>
         </main>
-        <BottomNav active={navActive} onNavigate={navigate} onAdd={() => setShowAddCust(true)} dueCount={dueCount} isModalOpen={showAddCust || !!reminderCust} />
+        <BottomNav active={navActive} onNavigate={navigate} onAdd={() => setShowAddCust(true)} dueCount={dueCount} isModalOpen={showAddCust || !!reminderCust || isLedgerDetail} />
         {showAddCust && <AddCustModal onClose={() => setShowAddCust(false)} onAdd={addCust} />}
         {REMINDERS_FEATURE_ENABLED && ReminderModal && reminderCust && (
           <Suspense fallback={null}>
@@ -396,10 +397,16 @@ function AppShell({ initialShopInfo, onReady }) {
 
 export default function App() {
   const [initialShopInfo, setInitialShopInfo] = useState(DEFAULT_SHOP);
-  // Skip splash on public auth screens so login is immediately tappable
-  const isPublicBoot = !isAuthTokenValid();
-  const [bootReady, setBootReady] = useState(() => isPublicBoot);
-  const [showSplash, setShowSplash] = useState(() => !isPublicBoot);
+  const [bootReady, setBootReady] = useState(false);
+  const [showSplash, setShowSplash] = useState(true);
+  const minSplashMs = 900;
+
+  useEffect(() => {
+    // Public routes: brief branded splash, then login/signup
+    if (isAuthTokenValid()) return undefined;
+    const t = window.setTimeout(() => setBootReady(true), minSplashMs);
+    return () => window.clearTimeout(t);
+  }, []);
 
   const handleAuthSuccess = useCallback((_, user) => {
     setAuthToken();

@@ -16,8 +16,14 @@ app.set('trust proxy', Number(process.env.TRUST_PROXY_HOPS || 1));
 
 const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:5173')
   .split(',')
-  .map((origin) => origin.trim())
+  .map((origin) => origin.trim().replace(/\/$/, ''))
   .filter(Boolean);
+
+function isOriginAllowed(origin) {
+  if (!origin) return true;
+  const normalized = origin.replace(/\/$/, '');
+  return allowedOrigins.includes(normalized);
+}
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -71,7 +77,7 @@ const generalLimiter = rateLimit({
 
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
+    if (isOriginAllowed(origin)) {
       callback(null, true);
       return;
     }
@@ -81,6 +87,9 @@ app.use(cors({
 }));
 app.use(helmet({
   hsts: { maxAge: 31536000, includeSubDomains: true, preload: true },
+  // Required for Vercel/localhost frontend talking to Render API
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+  crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
 }));
 app.use(compression());
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
@@ -98,6 +107,20 @@ app.get('/', (_req, res) => {
 
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true, service: 'medikhata-api' });
+});
+
+app.get('/api', (_req, res) => {
+  res.json({
+    ok: true,
+    service: 'medikhata-api',
+    message: 'MediKhata API root. Use a specific endpoint.',
+    endpoints: {
+      health: 'GET /api/health',
+      auth: '/api/auth/*',
+      customers: '/api/customers/*',
+      support: '/api/support/*',
+    },
+  });
 });
 
 app.use('/api/auth/login', loginLimiter);

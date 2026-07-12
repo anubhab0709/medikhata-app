@@ -239,7 +239,7 @@ export async function login(req, res) {
     const token = signToken(user._id, expiresIn);
     res.cookie('token', token, cookieOptions(maxAge));
 
-    return res.json({ user: toPublicUser(user) });
+    return res.json({ user: toPublicUser(user), token });
   } catch (error) {
     console.error('login error:', error);
     return res.status(500).json({ message: 'Login failed' });
@@ -329,7 +329,7 @@ export async function verifyOtp(req, res) {
       }
 
       await PendingAuth.deleteOne({ _id: pending._id });
-      setAuthCookie(res, user._id);
+      const token = setAuthCookie(res, user._id);
 
       emailService.sendWelcome({ to: cleanEmail, name: user.ownerName }).catch(() => {});
 
@@ -337,6 +337,7 @@ export async function verifyOtp(req, res) {
         success: true,
         message: 'Account verified successfully',
         user: toPublicUser(user),
+        token,
       });
     }
 

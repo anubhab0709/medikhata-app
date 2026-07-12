@@ -177,9 +177,9 @@ export default function AuthPage({ mode = 'login', onAuthSuccess }) {
   const [signupPassword, setSignupPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
-  const finishAuth = (user) => {
-    setAuthToken();
-    onAuthSuccess?.(null, user);
+  const finishAuth = (user, token) => {
+    setAuthToken(token);
+    onAuthSuccess?.(token || null, user);
     navigate('/app/dashboard', { replace: true });
   };
 
@@ -193,7 +193,7 @@ export default function AuthPage({ mode = 'login', onAuthSuccess }) {
         password,
         rememberMe,
       });
-      finishAuth(result.user);
+      finishAuth(result.user, result.token);
     } catch (err) {
       setError(err.message || 'Login failed');
     } finally {
@@ -241,7 +241,7 @@ export default function AuthPage({ mode = 'login', onAuthSuccess }) {
           setLoading={setLoading}
           setError={setError}
           onBack={() => setStep('form')}
-          onVerified={(result) => finishAuth(result.user)}
+          onVerified={(result) => finishAuth(result.user, result.token)}
         />
         {error && <p role="alert" className="mt-4 text-xs text-red-600 text-center">{error}</p>}
       </AuthShell>

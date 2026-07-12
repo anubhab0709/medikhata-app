@@ -408,8 +408,8 @@ export default function App() {
     return () => window.clearTimeout(t);
   }, []);
 
-  const handleAuthSuccess = useCallback((_, user) => {
-    setAuthToken();
+  const handleAuthSuccess = useCallback((token, user) => {
+    setAuthToken(token);
     setInitialShopInfo({
       ...DEFAULT_SHOP,
       ...(user?.settings || {}),

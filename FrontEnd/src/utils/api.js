@@ -1,3 +1,5 @@
+import { getBearerToken, saveBearerToken, clearBearerToken } from './sessionAuth.js';
+
 function normalizeApiBase(raw) {
   let base = String(raw || '/api').trim();
   if (!base) base = '/api';
@@ -15,8 +17,15 @@ const AUTH_STATUS_KEY = 'khata_auth_status';
 const REQUEST_TIMEOUT_MS = 30_000;
 
 export const getAuthToken = () => localStorage.getItem(AUTH_STATUS_KEY) || '';
-export const setAuthToken = () => localStorage.setItem(AUTH_STATUS_KEY, 'true');
-export const clearAuthToken = () => localStorage.removeItem(AUTH_STATUS_KEY);
+/** Marks session active. Pass JWT when available (needed on iPhone / cross-site). */
+export const setAuthToken = (token) => {
+  localStorage.setItem(AUTH_STATUS_KEY, 'true');
+  if (token) saveBearerToken(token);
+};
+export const clearAuthToken = () => {
+  localStorage.removeItem(AUTH_STATUS_KEY);
+  clearBearerToken();
+};
 export const isAuthTokenValid = () => localStorage.getItem(AUTH_STATUS_KEY) === 'true';
 
 const PUBLIC_AUTH_PATHS = new Set([
@@ -40,6 +49,11 @@ async function request(path, options = {}) {
     'Content-Type': 'application/json',
     ...(options.headers || {}),
   };
+
+  const bearer = getBearerToken();
+  if (bearer) {
+    headers.Authorization = `Bearer ${bearer}`;
+  }
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);

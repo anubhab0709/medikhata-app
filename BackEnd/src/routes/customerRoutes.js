@@ -9,6 +9,7 @@ import {
   listCustomers,
   markBulkReminders,
   markCustomerReminder,
+  updateCustomer,
   updateTransaction,
 } from '../controllers/customerController.js';
 import { requireAuth } from '../middleware/auth.js';
@@ -20,6 +21,7 @@ router.get('/', listCustomers);
 router.get('/dashboard-summary', getDashboardSummary);
 router.get('/:id', getCustomer);
 router.post('/', createCustomer);
+router.put('/:id', updateCustomer);
 router.delete('/:id', deleteCustomer);
 router.post('/reminders/mark-bulk', markBulkReminders);
 router.post('/:id/reminders/mark', markCustomerReminder);

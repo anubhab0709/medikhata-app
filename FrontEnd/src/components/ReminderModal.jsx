@@ -22,9 +22,19 @@ export default function ReminderModal({ customer, onClose, onSent, shopInfo }) {
   }), [msgLang, customer.name, customer.balance, shopInfo, t]);
 
   const finalMsg = useCustom ? customMsg : template;
-  const cc = (shopInfo?.whatsappCountryCode || '91').replace(/\D/g, '') || '91';
-  const cleanPhone = customer.phone.replace(/\D/g, '');
-  const waLink = `https://wa.me/${cc}${cleanPhone}?text=${encodeURIComponent(finalMsg)}`;
+  const waPhone = (() => {
+    const cc = (shopInfo?.whatsappCountryCode || '91').replace(/\D/g, '') || '91';
+    let digits = String(customer.phone || '').replace(/\D/g, '');
+    if (!digits) return '';
+    // Strip leading 0 (local format) and avoid double country code (e.g. 91 already in number)
+    if (digits.startsWith('0')) digits = digits.replace(/^0+/, '');
+    if (digits.startsWith(cc)) return digits;
+    if (digits.length > 10) return digits;
+    return `${cc}${digits}`;
+  })();
+  const waLink = waPhone
+    ? `https://wa.me/${waPhone}?text=${encodeURIComponent(finalMsg)}`
+    : `https://wa.me/?text=${encodeURIComponent(finalMsg)}`;
   const smsLink = `sms:${customer.phone}?body=${encodeURIComponent(finalMsg)}`;
   const lastReminderText = customer.lastReminded
     ? new Date(customer.lastReminded).toLocaleString('en-IN', {

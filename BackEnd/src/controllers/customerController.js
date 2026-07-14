@@ -250,6 +250,33 @@ export async function createCustomer(req, res) {
   }
 }
 
+export async function updateCustomer(req, res) {
+  try {
+    const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: 'Invalid customer ID' });
+    }
+
+    const { name, phone, area } = req.body || {};
+    if (name !== undefined && !String(name).trim()) {
+      return res.status(400).json({ message: 'Customer name is required' });
+    }
+
+    const customer = await Customer.findOne({ _id: id, ownerId: req.user.id });
+    if (!customer) return res.status(404).json({ message: 'Customer not found' });
+
+    if (name !== undefined) customer.name = String(name).trim();
+    if (phone !== undefined) customer.phone = String(phone).trim();
+    if (area !== undefined) customer.area = String(area).trim();
+    await customer.save();
+
+    const txns = await Transaction.find({ customerId: customer._id, ownerId: req.user.id }).sort({ date: 1 });
+    return res.json({ customer: toClientCustomer(customer, txns) });
+  } catch {
+    return res.status(500).json({ message: 'Failed to update customer' });
+  }
+}
+
 export async function deleteCustomer(req, res) {
   try {
     const { id } = req.params;

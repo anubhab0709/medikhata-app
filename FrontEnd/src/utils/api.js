@@ -155,6 +155,7 @@ export const customerApi = {
   dashboardSummary: () => request('/customers/dashboard-summary'),
   get: (customerId) => request(`/customers/${customerId}`),
   create: (body) => request('/customers', { method: 'POST', body: JSON.stringify(body) }),
+  update: (customerId, body) => request(`/customers/${customerId}`, { method: 'PUT', body: JSON.stringify(body) }),
   remove: (customerId) => request(`/customers/${customerId}`, { method: 'DELETE' }),
 };
 

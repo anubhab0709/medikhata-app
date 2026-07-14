@@ -8,10 +8,13 @@ const formatBillDate = (iso) => new Date(iso).toLocaleDateString('en-IN', {
 });
 
 const sanitizePhone = (value, countryCode = '91') => {
-  const digits = String(value || '').replace(/\D/g, '');
+  const cc = String(countryCode || '91').replace(/\D/g, '') || '91';
+  let digits = String(value || '').replace(/\D/g, '');
   if (!digits) return '';
+  if (digits.startsWith('0')) digits = digits.replace(/^0+/, '');
+  if (digits.startsWith(cc)) return digits;
   if (digits.length > 10) return digits;
-  return `${String(countryCode || '91').replace(/\D/g, '') || '91'}${digits}`;
+  return `${cc}${digits}`;
 };
 
 const buildBillMessage = (customer, shopInfo) => {

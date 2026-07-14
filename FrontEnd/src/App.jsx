@@ -92,7 +92,7 @@ function PublicOnlyRoute() {
   return isAuthTokenValid() ? <Navigate to="/app/dashboard" replace /> : <Outlet />;
 }
 
-function LedgerRouteView({ customers, shopInfo, onBack, onAddTxn, onEditTxn, onDeleteTxn, onDeleteCustomer, onOpenReminder, setCustomers }) {
+function LedgerRouteView({ customers, shopInfo, onBack, onAddTxn, onEditTxn, onDeleteTxn, onDeleteCustomer, onOpenReminder, onEditCustomer, setCustomers }) {
   const { id } = useParams();
   const [loading, setLoading] = useState(true);
   const activeCust = customers.find(c => String(c.id) === String(id));
@@ -138,6 +138,7 @@ function LedgerRouteView({ customers, shopInfo, onBack, onAddTxn, onEditTxn, onD
       onDeleteTxn={onDeleteTxn}
       onDeleteCustomer={onDeleteCustomer}
       onOpenReminder={onOpenReminder}
+      onEditCustomer={onEditCustomer}
     />
   );
 }
@@ -279,6 +280,21 @@ function AppShell({ initialShopInfo, onReady }) {
     setShowAddCust(false);
   }, []);
 
+  const editCustomer = useCallback(async (custId, payload) => {
+    const updated = await customerApi.update(custId, payload);
+    setCustomers(prev => prev.map(c => {
+      if (c.id !== custId) return c;
+      return {
+        ...c,
+        ...updated.customer,
+        transactions: Array.isArray(updated.customer?.transactions) && updated.customer.transactions.length > 0
+          ? updated.customer.transactions
+          : (c.transactions || []),
+      };
+    }));
+    setReminderCust(prev => (prev && prev.id === custId ? { ...prev, ...updated.customer, transactions: prev.transactions } : prev));
+  }, []);
+
   const openRem = useCallback((c) => {
     if (!REMINDERS_FEATURE_ENABLED) return;
     setReminderCust(c);
@@ -292,7 +308,18 @@ function AppShell({ initialShopInfo, onReady }) {
       .then((result) => {
         const updatedCustomers = Array.isArray(result?.customers) ? result.customers : [];
         const updatedMap = new Map(updatedCustomers.map((c) => [c.id, c]));
-        setCustomers(prev => prev.map(c => (updatedMap.has(c.id) ? updatedMap.get(c.id) : c)));
+        setCustomers(prev => prev.map(c => {
+          if (!updatedMap.has(c.id)) return c;
+          const next = updatedMap.get(c.id);
+          // Reminder API omits transactions — keep existing ledger history
+          return {
+            ...c,
+            ...next,
+            transactions: Array.isArray(c.transactions) && c.transactions.length > 0
+              ? c.transactions
+              : (next.transactions || []),
+          };
+        }));
         setReminderCust(null);
         setBulkToastVisible(true);
       })
@@ -305,7 +332,18 @@ function AppShell({ initialShopInfo, onReady }) {
     if (!REMINDERS_FEATURE_ENABLED) return;
     try {
       const result = await reminderApi.markOne(custId);
-      setCustomers(prev => prev.map(c => (c.id === custId ? result.customer : c)));
+      setCustomers(prev => prev.map(c => {
+        if (c.id !== custId) return c;
+        const next = result.customer;
+        // Reminder API returns customer without transactions — preserve ledger history
+        return {
+          ...c,
+          ...next,
+          transactions: Array.isArray(c.transactions) && c.transactions.length > 0
+            ? c.transactions
+            : (next?.transactions || []),
+        };
+      }));
       setReminderCust(null);
     } catch (error) {
       setApiError(error?.message || 'Unable to update reminder status');
@@ -357,7 +395,7 @@ function AppShell({ initialShopInfo, onReady }) {
                   <Routes>
                     <Route path="dashboard" element={<DashboardPage customers={customers} monthlySummary={monthlySummary} recentActivity={recentActivity} todayActivity={todayActivity} onNavigate={navigate} onAddCust={() => setShowAddCust(true)} onOpenCustomer={selectCust} shopInfo={shopInfo} />} />
                     <Route path="customers" element={<CustomerListPage customers={customers} onSelect={selectCust} onAddCust={() => setShowAddCust(true)} />} />
-                    <Route path="customers/:id" element={<LedgerRouteView customers={customers} shopInfo={shopInfo} onBack={() => navigate('customers')} onAddTxn={addTxn} onEditTxn={editTxn} onDeleteTxn={deleteTxn} onDeleteCustomer={deleteCustomer} onOpenReminder={openRem} setCustomers={setCustomers} />} />
+                    <Route path="customers/:id" element={<LedgerRouteView customers={customers} shopInfo={shopInfo} onBack={() => navigate('customers')} onAddTxn={addTxn} onEditTxn={editTxn} onDeleteTxn={deleteTxn} onDeleteCustomer={deleteCustomer} onOpenReminder={openRem} onEditCustomer={editCustomer} setCustomers={setCustomers} />} />
                     {REMINDERS_FEATURE_ENABLED && RemindersPage ? (
                       <Route path="reminders" element={<RemindersPage customers={customers} shopInfo={shopInfo} onOpenReminder={openRem} onSendSelectedReminders={startBulkReminders} />} />
                     ) : (

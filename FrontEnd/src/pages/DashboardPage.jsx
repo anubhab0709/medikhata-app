@@ -11,14 +11,14 @@ function KpiCard({ label, value, hint, tone = 'neutral', icon }) {
     advance: 'card-kpi-accent card-kpi-accent--advance border-emerald-100/80',
     primary: 'card-kpi-accent card-kpi-accent--primary border-primary-100/80',
     amber: 'card-kpi-accent card-kpi-accent--amber border-amber-100/80',
-    neutral: 'card-kpi',
+    neutral: 'card-kpi-accent card-kpi-accent--neutral border-slate-200/80',
   };
   const iconTones = {
     due: 'bg-red-50 text-red-600',
     advance: 'bg-emerald-50 text-emerald-600',
     primary: 'bg-primary-50 text-primary-600',
     amber: 'bg-amber-50 text-amber-600',
-    neutral: 'bg-slate-100 text-slate-600',
+    neutral: 'bg-slate-100 text-slate-700',
   };
   const valueTones = {
     due: 'text-red-600',
@@ -44,7 +44,7 @@ function KpiCard({ label, value, hint, tone = 'neutral', icon }) {
   );
 }
 
-function ChartPlaceholder({ monthlyCredit, monthlyDebit }) {
+function ChartPlaceholder({ monthlyCredit, monthlyDebit, monthLabel }) {
   const max = Math.max(monthlyCredit, monthlyDebit, 1);
   const creditPct = Math.round((monthlyCredit / max) * 100);
   const debitPct = Math.round((monthlyDebit / max) * 100);
@@ -52,16 +52,14 @@ function ChartPlaceholder({ monthlyCredit, monthlyDebit }) {
   return (
     <div className="chart-placeholder flex flex-col justify-end p-4">
       <div className="flex items-end justify-center gap-6 h-full pb-1">
-        <div className="flex flex-col items-center gap-2">
+        <div className="flex flex-col items-center justify-end h-full">
           <div className="w-10 sm:w-12 rounded-t-lg bg-red-200/80 transition-all duration-500" style={{ height: `${Math.max(creditPct, 8)}%` }} />
-          <span className="text-[10px] font-semibold text-red-600 uppercase tracking-wider">Credit</span>
         </div>
-        <div className="flex flex-col items-center gap-2">
+        <div className="flex flex-col items-center justify-end h-full">
           <div className="w-10 sm:w-12 rounded-t-lg bg-emerald-200/80 transition-all duration-500" style={{ height: `${Math.max(debitPct, 8)}%` }} />
-          <span className="text-[10px] font-semibold text-emerald-600 uppercase tracking-wider">Collected</span>
         </div>
       </div>
-      <p className="text-[11px] text-center text-slate-500 mt-3">This month</p>
+      <p className="text-[11px] text-center text-slate-600 mt-3 font-semibold">This Month – {monthLabel}</p>
     </div>
   );
 }
@@ -116,12 +114,14 @@ export default function DashboardPage({ customers, monthlySummary = { credit: 0,
 
   const monthCredit = Math.round(Number(monthlySummary?.credit) || 0);
   const monthDebit = Math.round(Number(monthlySummary?.debit) || 0);
+  const monthLabel = new Date().toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
 
-  // Overdue = due balance older than markOverdueAfterDays (not "2 reminders sent")
+  // Overdue = balance due and older than markOverdueAfterDays since first reminder, last reminder, or last activity
   const overdueFocus = useMemo(() => customers
     .filter(c => c.balance > 0)
     .map(c => {
       const anchor = c.firstReminderAt || c.lastReminded || c.lastActivity;
+      if (!anchor) return { ...c, overdueDays: 0 };
       const overdueDays = Math.max(0, daysDiff(anchor) - overdueAfterDays);
       return { ...c, overdueDays };
     })
@@ -227,7 +227,7 @@ export default function DashboardPage({ customers, monthlySummary = { credit: 0,
 
             <div className="card-info">
               <h2 className="section-heading mb-3">Monthly collection</h2>
-              <ChartPlaceholder monthlyCredit={monthCredit} monthlyDebit={monthDebit} />
+              <ChartPlaceholder monthlyCredit={monthCredit} monthlyDebit={monthDebit} monthLabel={monthLabel} />
               <div className="grid grid-cols-2 gap-3 mt-3">
                 <div className="rounded-lg bg-red-50/60 border border-red-100 px-3 py-2">
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-red-500">Credit added</p>

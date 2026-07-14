@@ -169,17 +169,30 @@ export default function RemindersPage({ customers, shopInfo, onOpenReminder, onS
           </div>
 
           {selectedCustomers.length > 0 && (
-            <div className="flex items-center justify-between gap-3 rounded-xl border border-primary-200 bg-primary-50/60 px-3 py-2 sm:px-4 sm:py-2.5">
-              <p className="text-xs sm:text-sm font-semibold text-primary-700">{selectedCustomers.length} selected</p>
-              <button type="button" onClick={openBulkModal} className="btn-secondary btn-sm border-primary-200 text-primary-600 hover:bg-white">
-                <PaperPlaneIcon /> Send
-              </button>
+            <div className="flex items-center justify-between gap-2 rounded-xl border border-primary-200 bg-primary-50/60 px-2.5 py-2 sm:px-4 sm:py-2.5">
+              <p className="text-xs sm:text-sm font-semibold text-primary-700 shrink-0">{selectedCustomers.length} selected</p>
+              <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+                <button
+                  type="button"
+                  onClick={selectAllDue}
+                  disabled={selectedCustomers.length === dueCustomers.length}
+                  className="btn-secondary btn-sm border-primary-200 text-primary-700 hover:bg-white disabled:opacity-50"
+                >
+                  Select all
+                </button>
+                <button type="button" onClick={deselectAllDue} className="btn-secondary btn-sm border-slate-200 text-slate-600 hover:bg-white">
+                  Clear
+                </button>
+                <button type="button" onClick={openBulkModal} className="btn btn-sm shrink-0">
+                  <PaperPlaneIcon /> Send
+                </button>
+              </div>
             </div>
           )}
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto pb-28 sm:pb-24">
+      <div className="flex-1 overflow-y-auto pb-24 sm:pb-8">
         {dueCustomers.length === 0 ? (
           <div className="flex flex-col items-center justify-center text-center py-16 text-slate-500 page-shell">
             <div className="icon-chip bg-emerald-50 text-emerald-600 mb-3 ring-1 ring-emerald-100"><Ico.Check /></div>
@@ -264,15 +277,6 @@ export default function RemindersPage({ customers, shopInfo, onOpenReminder, onS
           </div>
         )}
       </div>
-
-      {selectedCustomers.length > 0 && (
-        <div className="fixed left-1/2 bottom-16 sm:bottom-6 z-40 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 rounded-xl border border-slate-200 bg-white/95 backdrop-blur shadow-xl p-2">
-          <div className="flex items-center gap-2">
-            <button type="button" onClick={selectAllDue} className="btn flex-1 btn-sm" disabled={selectedCustomers.length === dueCustomers.length}>Select all</button>
-            <button type="button" onClick={deselectAllDue} className="btn-secondary flex-1 btn-sm">Clear</button>
-          </div>
-        </div>
-      )}
 
       {showBulkModal && selectedCustomers.length > 0 && (
         <div className="modal-backdrop fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">

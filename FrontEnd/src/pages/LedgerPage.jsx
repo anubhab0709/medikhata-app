@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef } from 'react';
 import Ico from '../utils/icons.jsx';
 import AddTxnModal from '../components/AddTxnModal.jsx';
+import EditCustModal from '../components/EditCustModal.jsx';
 import ConfirmToast from '../components/ConfirmToast.jsx';
 import { fmtCur, formatDate, formatTime } from '../utils/data.js';
 import { downloadCustomerLedgerPdf, openBillOnWhatsApp } from '../utils/billExport.js';
@@ -16,7 +17,7 @@ function PaperPlaneIcon() {
   );
 }
 
-export default function LedgerPage({ customer, shopInfo, onBack, onAddTxn, onEditTxn, onDeleteTxn, onDeleteCustomer, onOpenReminder }) {
+export default function LedgerPage({ customer, shopInfo, onBack, onAddTxn, onEditTxn, onDeleteTxn, onDeleteCustomer, onOpenReminder, onEditCustomer }) {
   const t = useLang();
   const [modalType, setModalType] = useState(null);
   const [editTxn, setEditTxn] = useState(null);
@@ -24,13 +25,15 @@ export default function LedgerPage({ customer, shopInfo, onBack, onAddTxn, onEdi
   const [showSettleModal, setShowSettleModal] = useState(false);
   const [showBillSheet, setShowBillSheet] = useState(false);
   const [showHeaderMenu, setShowHeaderMenu] = useState(false);
+  const [showEditCust, setShowEditCust] = useState(false);
   const [billToast, setBillToast] = useState('');
   const [showMobileActions, setShowMobileActions] = useState(true);
   const [confirmAction, setConfirmAction] = useState(null);
   const lastScrollTop = useRef(0);
-  const dialHref = `tel:${customer.phone.replace(/\s+/g, '')}`;
+  const dialHref = `tel:${String(customer.phone || '').replace(/\s+/g, '')}`;
+  const transactions = Array.isArray(customer.transactions) ? customer.transactions : [];
   const txnsByMonth = useMemo(() => {
-    const sorted = [...customer.transactions].sort((a, b) => new Date(b.date) - new Date(a.date));
+    const sorted = [...transactions].sort((a, b) => new Date(b.date) - new Date(a.date));
     const grouped = new Map();
 
     sorted.forEach(tx => {
@@ -46,7 +49,7 @@ export default function LedgerPage({ customer, shopInfo, onBack, onAddTxn, onEdi
     });
 
     return Array.from(grouped.values());
-  }, [customer.transactions]);
+  }, [transactions]);
   const bal = customer.balance;
   const isOwed = bal > 0;
 
@@ -216,6 +219,16 @@ export default function LedgerPage({ customer, shopInfo, onBack, onAddTxn, onEdi
                   </button>
                   <button
                     type="button"
+                    onClick={() => {
+                      setShowHeaderMenu(false);
+                      setShowEditCust(true);
+                    }}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                  >
+                    <Ico.Edit className="w-4 h-4" /> Edit Customer
+                  </button>
+                  <button
+                    type="button"
                     onClick={requestDeleteCustomer}
                     className="flex w-full items-center gap-2 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
                   >
@@ -243,6 +256,15 @@ export default function LedgerPage({ customer, shopInfo, onBack, onAddTxn, onEdi
                 aria-label="Open bill actions"
               >
                 <Ico.Bill className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowEditCust(true)}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 transition-all"
+                title="Edit"
+                aria-label="Edit customer"
+              >
+                <Ico.Edit className="w-4 h-4" />
               </button>
               <button
                 type="button"
@@ -538,6 +560,14 @@ export default function LedgerPage({ customer, shopInfo, onBack, onAddTxn, onEdi
             </div>
           </div>
         </div>
+      )}
+
+      {showEditCust && (
+        <EditCustModal
+          customer={customer}
+          onClose={() => setShowEditCust(false)}
+          onSave={(payload) => onEditCustomer(customer.id, payload)}
+        />
       )}
 
       {(modalType || editTxn) && <AddTxnModal customer={customer} initialType={editTxn?.type || modalType} initialTxn={editTxn} onClose={() => { setModalType(null); setEditTxn(null); }} onAdd={txn => { onAddTxn(customer.id, txn); setModalType(null); setEditTxn(null); }} onSave={txn => { onEditTxn(customer.id, txn); setModalType(null); setEditTxn(null); }} />}

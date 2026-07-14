@@ -169,7 +169,6 @@ export default function AuthPage({ mode = 'login', onAuthSuccess }) {
   // Login state
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [rememberMe, setRememberMe] = useState(true);
 
   // Signup state
   const [fullName, setFullName] = useState('');
@@ -178,8 +177,12 @@ export default function AuthPage({ mode = 'login', onAuthSuccess }) {
   const [confirmPassword, setConfirmPassword] = useState('');
 
   const finishAuth = (user, token) => {
+    if (!token) {
+      setError('Login succeeded but session could not be saved on this browser. Please try again, or turn off Private Browsing.');
+      return;
+    }
     setAuthToken(token);
-    onAuthSuccess?.(token || null, user);
+    onAuthSuccess?.(token, user);
     navigate('/app/dashboard', { replace: true });
   };
 
@@ -188,10 +191,11 @@ export default function AuthPage({ mode = 'login', onAuthSuccess }) {
     setLoading(true);
     setError('');
     try {
+      // Always long-lived on mobile Safari (cookies alone are unreliable)
       const result = await authApi.login({
         email: email.trim(),
         password,
-        rememberMe,
+        rememberMe: true,
       });
       finishAuth(result.user, result.token);
     } catch (err) {
@@ -291,16 +295,7 @@ export default function AuthPage({ mode = 'login', onAuthSuccess }) {
               disabled={loading}
             />
           </div>
-          <div className="flex items-center justify-between gap-3">
-            <label className="inline-flex items-center gap-2 text-sm text-slate-600 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={rememberMe}
-                onChange={(e) => setRememberMe(e.target.checked)}
-                className="h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
-              />
-              Remember me
-            </label>
+          <div className="flex justify-end">
             <Link to="/forgot-password" className="text-sm font-medium text-primary-600 hover:text-primary-700 focus-ring rounded">Forgot password?</Link>
           </div>
           <button type="submit" disabled={loading} className="btn w-full">

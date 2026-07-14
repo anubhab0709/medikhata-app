@@ -61,8 +61,9 @@ export function clearOtpFields(user) {
   user.otpResendCount = 0;
 }
 
-export function cookieOptions(maxAgeMs = 7 * 24 * 60 * 60 * 1000) {
+export function cookieOptions(maxAgeMs = 30 * 24 * 60 * 60 * 1000) {
   // Cross-site FE/BE (Vercel + Render) needs SameSite=None; Secure
+  // Prefer same-origin /api proxy on Vercel so Safari treats cookies as first-party.
   const defaultSameSite = process.env.NODE_ENV === 'production' ? 'none' : 'lax';
   const sameSiteRaw = String(process.env.COOKIE_SAMESITE || defaultSameSite).toLowerCase();
   const sameSite = ['strict', 'lax', 'none'].includes(sameSiteRaw) ? sameSiteRaw : defaultSameSite;

@@ -1,6 +1,8 @@
+import { createPortal } from 'react-dom';
+
 /**
  * Mobile-first confirm sheet / desktop toast for call & delete actions.
- * Replaces browser confirm() and raw tel: prompts.
+ * Portaled to body so it sits above BottomNav (not clipped by page overflow/transforms).
  */
 export default function ConfirmToast({
   open,
@@ -22,8 +24,8 @@ export default function ConfirmToast({
     ? 'bg-red-50 text-red-600 border-red-100'
     : 'bg-primary-50 text-primary-600 border-primary-100';
 
-  return (
-    <div className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center p-0 sm:p-4">
+  return createPortal(
+    <div className="fixed inset-0 z-[90] flex items-end sm:items-center justify-center p-0 sm:p-4">
       <button
         type="button"
         className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
@@ -35,7 +37,7 @@ export default function ConfirmToast({
         aria-modal="true"
         aria-labelledby="confirm-toast-title"
         aria-describedby="confirm-toast-desc"
-        className="relative w-full sm:max-w-sm bg-white rounded-t-2xl sm:rounded-2xl shadow-xl border border-slate-200/80 safe-area-pb bulk-toast-enter overflow-hidden"
+        className="relative w-full sm:max-w-sm bg-white rounded-t-2xl sm:rounded-2xl shadow-xl border border-slate-200/80 bulk-toast-enter overflow-hidden pb-[max(1rem,env(safe-area-inset-bottom))]"
       >
         <div className="mx-auto mt-2 h-1 w-10 rounded-full bg-slate-200 sm:hidden" aria-hidden="true" />
         <div className="p-4 sm:p-5 space-y-4">
@@ -78,6 +80,7 @@ export default function ConfirmToast({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

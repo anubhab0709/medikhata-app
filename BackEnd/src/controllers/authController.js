@@ -86,8 +86,9 @@ function toPublicUser(user) {
 }
 
 function setAuthCookie(res, userId) {
-  const token = signToken(userId);
-  res.cookie('token', token, cookieOptions());
+  const maxAge = 30 * 24 * 60 * 60 * 1000; // 30 days — Safari drops short sessions
+  const token = signToken(userId, '30d');
+  res.cookie('token', token, cookieOptions(maxAge));
   return token;
 }
 
@@ -216,7 +217,7 @@ export async function signup(req, res) {
 
 export async function login(req, res) {
   try {
-    const { email, password, rememberMe } = req.body || {};
+    const { email, password } = req.body || {};
     const cleanEmail = normalizeEmail(email);
 
     if (!cleanEmail || !password) {
@@ -234,9 +235,9 @@ export async function login(req, res) {
     const matched = await bcrypt.compare(password, user.passwordHash);
     if (!matched) return res.status(401).json({ message: 'Invalid email or password' });
 
-    const maxAge = rememberMe ? 30 * 24 * 60 * 60 * 1000 : 7 * 24 * 60 * 60 * 1000;
-    const expiresIn = rememberMe ? '30d' : (process.env.JWT_EXPIRES_IN || '7d');
-    const token = signToken(user._id, expiresIn);
+    // Always 30 days — Safari iOS often blocks / drops cross-site cookies; client relies on JWT in response body
+    const maxAge = 30 * 24 * 60 * 60 * 1000;
+    const token = signToken(user._id, '30d');
     res.cookie('token', token, cookieOptions(maxAge));
 
     return res.json({ user: toPublicUser(user), token });

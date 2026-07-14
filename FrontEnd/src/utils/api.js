@@ -1,4 +1,12 @@
-import { getBearerToken, saveBearerToken, clearBearerToken } from './sessionAuth.js';
+import {
+  getBearerToken,
+  saveBearerToken,
+  clearBearerToken,
+  markAuthActive,
+  clearAuthFlag,
+  hasUsableSession,
+  isJwtExpired,
+} from './sessionAuth.js';
 
 function normalizeApiBase(raw) {
   let base = String(raw || '/api').trim();
@@ -13,20 +21,27 @@ function normalizeApiBase(raw) {
 }
 
 const API_BASE_URL = normalizeApiBase(import.meta.env.VITE_API_URL);
-const AUTH_STATUS_KEY = 'khata_auth_status';
 const REQUEST_TIMEOUT_MS = 30_000;
 
-export const getAuthToken = () => localStorage.getItem(AUTH_STATUS_KEY) || '';
-/** Marks session active. Pass JWT when available (needed on iPhone / cross-site). */
+export const getAuthToken = () => (hasUsableSession() ? 'true' : '');
+
+/** Marks session active. Always pass the JWT from login (needed on iPhone Safari). */
 export const setAuthToken = (token) => {
-  localStorage.setItem(AUTH_STATUS_KEY, 'true');
-  if (token) saveBearerToken(token);
+  markAuthActive();
+  if (token) {
+    const saved = saveBearerToken(token);
+    if (!saved) {
+      console.warn('[auth] Could not persist session token (storage blocked).');
+    }
+  }
 };
+
 export const clearAuthToken = () => {
-  localStorage.removeItem(AUTH_STATUS_KEY);
+  clearAuthFlag();
   clearBearerToken();
 };
-export const isAuthTokenValid = () => localStorage.getItem(AUTH_STATUS_KEY) === 'true';
+
+export const isAuthTokenValid = () => hasUsableSession();
 
 const PUBLIC_AUTH_PATHS = new Set([
   '/auth/login',
@@ -51,7 +66,7 @@ async function request(path, options = {}) {
   };
 
   const bearer = getBearerToken();
-  if (bearer) {
+  if (bearer && !isJwtExpired(bearer)) {
     headers.Authorization = `Bearer ${bearer}`;
   }
 
@@ -83,7 +98,9 @@ async function request(path, options = {}) {
     if (!window.location.pathname.startsWith('/login') && !window.location.pathname.startsWith('/l/')) {
       window.location.href = '/login';
     }
-    throw new Error('Session expired');
+    const error = new Error('Session expired');
+    error.status = 401;
+    throw error;
   }
 
   let payload = null;

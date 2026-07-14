@@ -1,14 +1,17 @@
 <svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- Transparent — white ledger + tick for splash on solid blue -->
-  <rect x="104" y="88" width="272" height="320" rx="36" fill="none" stroke="#FFFFFF" stroke-width="18"/>
-  <path d="M176 96v304" stroke="#FFFFFF" stroke-width="16" stroke-linecap="round"/>
-  <circle cx="140" cy="176" r="12" fill="#FFFFFF"/>
-  <circle cx="140" cy="248" r="12" fill="#FFFFFF"/>
-  <circle cx="140" cy="320" r="12" fill="#FFFFFF"/>
-  <rect x="208" y="160" width="128" height="20" rx="10" fill="#FFFFFF"/>
-  <rect x="208" y="216" width="104" height="20" rx="10" fill="#FFFFFF"/>
-  <rect x="208" y="272" width="120" height="20" rx="10" fill="#FFFFFF"/>
-  <rect x="208" y="328" width="88" height="20" rx="10" fill="#FFFFFF"/>
-  <circle cx="376" cy="376" r="88" fill="#FFFFFF"/>
-  <path d="M334 380l28 28 56-60" stroke="#2563EB" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Same compact mark for any/home icon (rounded via OS mask) -->
+  <rect width="512" height="512" rx="112" fill="#2563EB"/>
+  <g transform="translate(256 256) scale(0.55) translate(-256 -256)">
+    <rect x="130" y="110" width="230" height="270" rx="28" fill="none" stroke="#FFFFFF" stroke-width="20"/>
+    <path d="M188 118v254" stroke="#FFFFFF" stroke-width="16" stroke-linecap="round"/>
+    <circle cx="160" cy="185" r="11" fill="#FFFFFF"/>
+    <circle cx="160" cy="245" r="11" fill="#FFFFFF"/>
+    <circle cx="160" cy="305" r="11" fill="#FFFFFF"/>
+    <rect x="214" y="175" width="108" height="18" rx="9" fill="#FFFFFF"/>
+    <rect x="214" y="222" width="90" height="18" rx="9" fill="#FFFFFF"/>
+    <rect x="214" y="269" width="100" height="18" rx="9" fill="#FFFFFF"/>
+    <rect x="214" y="316" width="74" height="18" rx="9" fill="#FFFFFF"/>
+    <circle cx="352" cy="352" r="72" fill="#FFFFFF"/>
+    <path d="M318 355l22 22 46-48" stroke="#2563EB" stroke-width="24" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
 </svg>

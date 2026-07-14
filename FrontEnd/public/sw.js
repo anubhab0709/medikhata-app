@@ -1,5 +1,5 @@
 /* KhataApp service worker — cache shell for offline launch */
-const CACHE = 'khataapp-shell-v5';
+const CACHE = 'khataapp-shell-v6';
 const PRECACHE = ['/', '/index.html', '/manifest.webmanifest', '/favicon.svg', '/favicon-32.png', '/pwa-192.png', '/pwa-maskable-192.png'];
 
 self.addEventListener('install', (event) => {

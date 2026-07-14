@@ -1,11 +1,11 @@
-/** Shared HTML chrome for MediKhata transactional emails */
+/** Shared HTML chrome for KhataApp transactional emails */
 export function emailLayout({ title, preheader, bodyHtml, quoteHtml }) {
-  const appName = process.env.APP_NAME || 'MediKhata';
+  const appName = process.env.APP_NAME || 'KhataApp';
   const supportEmail =
     process.env.SUPPORT_CONTACT_EMAIL ||
     process.env.SUPPORT_EMAIL ||
     'khata.app2026@gmail.com';
-  const appUrl = process.env.APP_URL || process.env.CORS_ORIGIN?.split(',')[0] || 'https://medikhata.app';
+  const appUrl = process.env.APP_URL || process.env.CORS_ORIGIN?.split(',')[0] || 'https://medikhata-app.vercel.app';
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -55,7 +55,7 @@ export function emailLayout({ title, preheader, bodyHtml, quoteHtml }) {
               <p class="brand">${appName}</p>
             </td>
             <td class="brand-right" align="right">
-              <p class="brand-sub">Medicine shop ledger</p>
+              <p class="brand-sub">Universal shop ledger</p>
             </td>
           </tr>
         </table>
@@ -86,13 +86,13 @@ function otpQuoteBlock(otp, label = 'Your one-time code') {
 export function verificationOtpEmail({ name, otp }) {
   const minutes = Number(process.env.OTP_EXPIRY_MINUTES || 10);
   return {
-    subject: 'Verify your MediKhata account',
+    subject: 'Verify your KhataApp account',
     html: emailLayout({
       title: 'Verify your email',
-      preheader: `Your MediKhata verification code is ${otp}`,
+      preheader: `Your KhataApp verification code is ${otp}`,
       bodyHtml: `
         <h1>Verify your email</h1>
-        <p style="text-align:center">Hi ${escapeHtml(name || 'there')}, use the code below to verify your email and finish creating your MediKhata account.</p>
+        <p style="text-align:center">Hi ${escapeHtml(name || 'there')}, use the code below to verify your email and finish creating your KhataApp account.</p>
       `,
       quoteHtml: `
         ${otpQuoteBlock(otp, 'Verification code')}
@@ -105,13 +105,13 @@ export function verificationOtpEmail({ name, otp }) {
 export function resetOtpEmail({ name, otp }) {
   const minutes = Number(process.env.OTP_EXPIRY_MINUTES || 10);
   return {
-    subject: 'Reset your MediKhata password',
+    subject: 'Reset your KhataApp password',
     html: emailLayout({
       title: 'Password reset code',
-      preheader: `Your MediKhata password reset code is ${otp}`,
+      preheader: `Your KhataApp password reset code is ${otp}`,
       bodyHtml: `
         <h1>Reset your password</h1>
-        <p style="text-align:center">Hi ${escapeHtml(name || 'there')}, we received a request to reset your MediKhata password. Enter this code to continue:</p>
+        <p style="text-align:center">Hi ${escapeHtml(name || 'there')}, we received a request to reset your KhataApp password. Enter this code to continue:</p>
       `,
       quoteHtml: `
         ${otpQuoteBlock(otp, 'Password reset code')}
@@ -122,12 +122,12 @@ export function resetOtpEmail({ name, otp }) {
 }
 
 export function welcomeEmail({ name }) {
-  const appName = process.env.APP_NAME || 'MediKhata';
+  const appName = process.env.APP_NAME || 'KhataApp';
   return {
     subject: `Welcome to ${appName}`,
     html: emailLayout({
       title: 'Welcome',
-      preheader: `Welcome to ${appName} — your medicine shop ledger is ready.`,
+      preheader: `Welcome to ${appName} — your shop ledger is ready.`,
       bodyHtml: `
         <h1>Welcome aboard</h1>
         <p style="text-align:center">Hi ${escapeHtml(name || 'there')}, your email is verified and your ${appName} account is ready.</p>
@@ -149,13 +149,13 @@ export function supportMessageEmail({ name, email, message, shopName = '' }) {
   const safeMessage = escapeHtml(message || '').replace(/\n/g, '<br/>');
 
   return {
-    subject: `MediKhata support — ${name || 'New message'}`,
+    subject: `KhataApp support — ${name || 'New message'}`,
     html: emailLayout({
       title: 'Support message',
       preheader: `New support message from ${name || 'a user'}`,
       bodyHtml: `
         <h1>New support message</h1>
-        <p style="text-align:center">Someone sent a message from MediKhata Settings.</p>
+        <p style="text-align:center">Someone sent a message from KhataApp Settings.</p>
       `,
       quoteHtml: `
         <div class="quote" style="text-align:left;max-width:420px">

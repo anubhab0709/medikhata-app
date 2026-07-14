@@ -250,8 +250,8 @@ export default function AuthPage({ mode = 'login', onAuthSuccess }) {
 
   return (
     <AuthShell
-      title="MediKhata"
-      subtitle={isLogin ? 'Welcome back — sign in to your medicine shop ledger' : 'Create your account and start managing customer dues'}
+      title="KhataApp"
+      subtitle={isLogin ? 'Welcome back — sign in to your shop ledger' : 'Create your account and start managing customer dues'}
     >
       <div className="segmented grid-cols-2 mb-6" role="tablist" aria-label="Authentication mode">
         <span

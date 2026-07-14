@@ -1,42 +1,26 @@
 {
-  "name": "MediKhata",
-  "short_name": "MediKhata",
-  "description": "Medicine shop ledger — manage customer credits and reminders.",
+  "name": "KhataApp",
+  "short_name": "KhataApp",
+  "description": "Universal shop ledger — manage customer credits and reminders.",
   "start_url": "/",
-  "scope": "/",
   "display": "standalone",
-  "orientation": "portrait-primary",
   "background_color": "#2563EB",
-  "theme_color": "#F8FAFC",
-  "lang": "en",
-  "categories": ["business", "finance", "productivity"],
+  "theme_color": "#2563EB",
   "icons": [
     {
-      "src": "/favicon.svg?v=3",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any"
-    },
-    {
-      "src": "/pwa-192.png?v=3",
+      "src": "/pwa-192.png?v=4",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/pwa-512.png?v=3",
+      "src": "/pwa-512.png?v=4",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/pwa-maskable-192.png?v=3",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "maskable"
-    },
-    {
-      "src": "/pwa-maskable-512.png?v=3",
+      "src": "/pwa-512-maskable.png?v=4",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"

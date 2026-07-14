@@ -8,7 +8,7 @@ function cleanEnv(value) {
 }
 
 function getFromAddress() {
-  return cleanEnv(process.env.RESEND_FROM) || 'MediKhata <onboarding@resend.dev>';
+  return cleanEnv(process.env.RESEND_FROM) || 'KhataApp <onboarding@resend.dev>';
 }
 
 function getApiKey() {

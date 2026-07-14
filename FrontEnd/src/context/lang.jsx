@@ -1,55 +1,74 @@
 import { createContext, useContext } from 'react';
 
 const shared = {
-  msgTemplateBn: (name, amt, shop, owner, ph) =>
-    `প্রিয় ${name},\n\n${shop} এ আপনার বাকি আছে *₹${amt}*।\n\nদয়া করে যত দ্রুত সম্ভব পরিশোধ করুন।\n\nধন্যবাদ,\n${owner}\n${ph}`,
-  msgTemplateEn: (name, amt, shop, owner, ph) =>
-    `Dear ${name},\n\nYour outstanding balance at ${shop} is *₹${amt}*.\n\nKindly clear your dues at the earliest.\n\nThank you,\n${owner}\n${ph}`,
+  msgTemplateBn: (name, amt, shop, owner, ph, ledgerLink = '') =>
+    `প্রিয় ${name},\n\n${shop} এ আপনার বাকি আছে *₹${amt}*।\n\nদয়া করে যত দ্রুত সম্ভব পরিশোধ করুন।\n\nআপনার লেজার / PDF দেখুন বা ডাউনলোড করুন:\n${ledgerLink || '{ledgerLink}'}\n\nধন্যবাদ,\n${owner}\n${ph}`,
+  msgTemplateEn: (name, amt, shop, owner, ph, ledgerLink = '') =>
+    `Dear ${name},\n\nYour outstanding balance at ${shop} is *₹${amt}*.\n\nKindly clear your dues at the earliest.\n\nView / download your ledger PDF:\n${ledgerLink || '{ledgerLink}'}\n\nThank you,\n${owner}\n${ph}`,
 };
 
 export const DEFAULT_MESSAGE_EN =
-  'Dear {name},\n\nYour outstanding balance at {shop} is *{amount}*.\n\nKindly clear your dues at the earliest.\n\nThank you,\n{owner}\n{phone}';
+  'Dear {name},\n\nYour outstanding balance at {shop} is *{amount}*.\n\nKindly clear your dues at the earliest.\n\nView / download your ledger PDF:\n{ledgerLink}\n\nThank you,\n{owner}\n{phone}';
 
 export const DEFAULT_MESSAGE_BN =
-  'প্রিয় {name},\n\n{shop} এ আপনার বাকি আছে *{amount}*।\n\nদয়া করে যত দ্রুত সম্ভব পরিশোধ করুন।\n\nধন্যবাদ,\n{owner}\n{phone}';
+  'প্রিয় {name},\n\n{shop} এ আপনার বাকি আছে *{amount}*।\n\nদয়া করে যত দ্রুত সম্ভব পরিশোধ করুন।\n\nআপনার লেজার / PDF দেখুন বা ডাউনলোড করুন:\n{ledgerLink}\n\nধন্যবাদ,\n{owner}\n{phone}';
 
-/** Fill {name} {amount} {shop} {owner} {phone} placeholders in a saved template. */
-export function fillReminderTemplate(template, { name, amount, shop, owner, phone }) {
+/** Fill {name} {amount} {shop} {owner} {phone} {ledgerLink} placeholders in a saved template. */
+export function fillReminderTemplate(template, { name, amount, shop, owner, phone, ledgerLink }) {
   return String(template || '')
     .replaceAll('{name}', name ?? '')
     .replaceAll('{amount}', amount ?? '')
     .replaceAll('{shop}', shop ?? '')
     .replaceAll('{owner}', owner ?? '')
-    .replaceAll('{phone}', phone ?? '');
+    .replaceAll('{phone}', phone ?? '')
+    .replaceAll('{ledgerLink}', ledgerLink ?? '');
 }
 
-export function buildReminderMessage({ lang, shopInfo, t, name, amount }) {
+export function buildReminderMessage({ lang, shopInfo, t, name, amount, ledgerLink = '' }) {
   const shop = (shopInfo?.brandName || shopInfo?.shopName || 'Your Shop').trim();
   const owner = (shopInfo?.quickSignature || shopInfo?.ownerName || 'Shop Owner').trim();
   const phone = (shopInfo?.shopPhone || '').trim() || 'XXXXXXXXXX';
   const amt = typeof amount === 'number'
     ? `₹${Math.abs(Math.round(amount)).toLocaleString('en-IN')}`
     : String(amount || '');
+  const link = String(ledgerLink || '').trim();
 
   const customTpl = lang === 'bn'
     ? (shopInfo?.messageBn || '').trim()
     : (shopInfo?.messageEn || '').trim();
 
+  let message;
   if (customTpl) {
-    return fillReminderTemplate(customTpl, { name, amount: amt, shop, owner, phone });
+    // Older saved templates may omit {ledgerLink} — still inject it.
+    const withLinkPlaceholder = customTpl.includes('{ledgerLink}')
+      ? customTpl
+      : `${customTpl}\n\n${lang === 'bn' ? 'আপনার লেজার / PDF দেখুন বা ডাউনলোড করুন:' : 'View / download your ledger PDF:'}\n{ledgerLink}`;
+    message = fillReminderTemplate(withLinkPlaceholder, { name, amount: amt, shop, owner, phone, ledgerLink: link });
+  } else {
+    const fn = lang === 'bn' ? t.msgTemplateBn : t.msgTemplateEn;
+    const plainAmt = typeof amount === 'number'
+      ? Math.abs(Math.round(amount)).toLocaleString('en-IN')
+      : String(amount || '').replace(/^₹/, '');
+    message = fn(name, plainAmt, shop, owner, phone, link);
   }
 
-  const fn = lang === 'bn' ? t.msgTemplateBn : t.msgTemplateEn;
-  const plainAmt = typeof amount === 'number'
-    ? Math.abs(Math.round(amount)).toLocaleString('en-IN')
-    : String(amount || '').replace(/^₹/, '');
-  return fn(name, plainAmt, shop, owner, phone);
+  if (link && !message.includes(link)) {
+    const label = lang === 'bn'
+      ? 'আপনার লেজার / PDF দেখুন বা ডাউনলোড করুন:'
+      : 'View / download your ledger PDF:';
+    message = `${message}\n\n${label}\n${link}`;
+  }
+
+  // Never leave the raw placeholder in the shared WhatsApp/SMS text
+  message = message.replaceAll('{ledgerLink}', link);
+
+  return message;
 }
 
 export const T = {
   en: {
     ...shared,
-    appName: 'MediKhata', appSub: 'Medicine Shop Ledger',
+    appName: 'KhataApp', appSub: 'Manage Better. Grow Faster.',
     dashboard: 'Dashboard', home: 'Home', customers: 'Customers', reminders: 'Reminders', settings: 'Settings',
     totalDue: 'Total Due', todaySales: "Today's Sales", todayCollection: "Today's Collection",
     customersPending: 'customers pending', creditToday: 'Credit given today', paymentReceived: 'Payments received',
@@ -62,11 +81,11 @@ export const T = {
     totalDueLabel: 'Total Due', accountSettled: 'Account Settled', advanceBalance: 'Advance Balance',
     creditAdded: 'Credit (Due Added)', paymentRecorded: 'Payment Received',
     newEntryFor: 'New entry for', credit: 'Credit (Due)', debit: 'Debit (Paid)',
-    amount: 'Amount', note: 'Note (optional)', notePlaceholder: 'e.g. Monthly medicine, Prescription...',
+    amount: 'Amount', note: 'Note (optional)',     notePlaceholder: 'e.g. Monthly bill, Order #12...',
     addCredit: 'Add Credit Entry', recordPayment: 'Record Payment',
     validAmount: 'Please enter a valid amount', addedAsDue: 'will be added as due on customer', recordedAsPayment: 'will be recorded as payment received',
     fullName: 'Full Name *', phone: 'Phone Number', area: 'Area / Address',
-    namePlaceholder: 'e.g. Rajan Kumar', phonePlaceholder: 'e.g. 9876543210', areaPlaceholder: 'e.g. Main Market',
+    namePlaceholder: 'e.g. Rajan Kumar', phonePlaceholder: '10 digit mobile', areaPlaceholder: 'e.g. Main Market',
     saveCustomer: 'Save Customer',
     noTransactions: 'No transactions yet', firstEntry: 'Tap "Add Entry" to record the first', noCustomers: 'No customers found',
     sendReminder: 'Send Reminder', reminderTitle: 'Payment Reminder', reminderDesc: 'Remind customer about outstanding due',
@@ -82,7 +101,7 @@ export const T = {
     reminderSent: 'Reminder marked as sent',
     preferences: 'Preferences',
     reminderMessages: 'Reminder messages',
-    reminderMessagesHint: 'These become the default WhatsApp/SMS templates. Use placeholders: {name}, {amount}, {shop}, {owner}, {phone}',
+    reminderMessagesHint: 'These become the default WhatsApp/SMS templates. Use: {name}, {amount}, {shop}, {owner}, {phone}, {ledgerLink}',
     defaultMsgLang: 'Default reminder language',
     englishTemplate: 'English template',
     bengaliTemplate: 'Bengali template',
@@ -94,7 +113,7 @@ export const T = {
   },
   bn: {
     ...shared,
-    appName: 'MediKhata', appSub: 'মেডিসিন শপ খাতা',
+    appName: 'KhataApp', appSub: 'Manage Better. Grow Faster.',
     dashboard: 'ড্যাশবোর্ড', home: 'হোম', customers: 'গ্রাহক', reminders: 'রিমাইন্ডার', settings: 'সেটিংস',
     totalDue: 'মোট বাকি', todaySales: 'আজকের বিক্রি', todayCollection: 'আজকের আদায়',
     customersPending: 'গ্রাহকের বাকি', creditToday: 'আজকের বাকি', paymentReceived: 'পেমেন্ট পাওয়া গেছে',
@@ -127,7 +146,7 @@ export const T = {
     reminderSent: 'রিমাইন্ডার পাঠানো হিসেবে চিহ্নিত',
     preferences: 'পছন্দসমূহ',
     reminderMessages: 'রিমাইন্ডার মেসেজ',
-    reminderMessagesHint: 'সেভ করলে এটিই ডিফল্ট WhatsApp/SMS টেমপ্লেট হবে। ব্যবহার করুন: {name}, {amount}, {shop}, {owner}, {phone}',
+    reminderMessagesHint: 'সেভ করলে এটিই ডিফল্ট WhatsApp/SMS টেমপ্লেট হবে। ব্যবহার করুন: {name}, {amount}, {shop}, {owner}, {phone}, {ledgerLink}',
     defaultMsgLang: 'ডিফল্ট রিমাইন্ডার ভাষা',
     englishTemplate: 'ইংরেজি টেমপ্লেট',
     bengaliTemplate: 'বাংলা টেমপ্লেট',

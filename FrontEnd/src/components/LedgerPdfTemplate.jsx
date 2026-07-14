@@ -67,6 +67,7 @@ export const buildLedgerStatementData = (customer, shopInfo) => {
       name: shopInfo?.shopName || 'Your Shop Name',
       address: shopInfo?.shopAddress || 'Address not provided',
       phone: shopInfo?.shopPhone || 'Not available',
+      email: shopInfo?.shopEmail || '',
     },
     customer: {
       name: customer?.name || 'Walk-in Customer',

@@ -1,7 +1,9 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Ico from './Ico.jsx';
 import { useLang, buildReminderMessage } from '../context/lang.jsx';
 import { fmtCur } from '../utils/data.js';
+import { customerApi } from '../utils/api.js';
+import { appendLedgerLinkToMessage, buildLedgerShareUrl } from '../utils/ledgerShare.js';
 
 export default function ReminderModal({ customer, onClose, onSent, shopInfo }) {
   const t = useLang();
@@ -12,6 +14,45 @@ export default function ReminderModal({ customer, onClose, onSent, shopInfo }) {
   const [customMsg, setCustomMsg] = useState('');
   const [copied, setCopied] = useState(false);
   const [sending, setSending] = useState(false);
+  const [ledgerLink, setLedgerLink] = useState(() => buildLedgerShareUrl(customer?.ledgerShareToken));
+  const [linkReady, setLinkReady] = useState(() => Boolean(buildLedgerShareUrl(customer?.ledgerShareToken)));
+
+  useEffect(() => {
+    let active = true;
+    const existing = buildLedgerShareUrl(customer?.ledgerShareToken);
+    if (existing) {
+      setLedgerLink(existing);
+      setLinkReady(true);
+      return undefined;
+    }
+
+    setLinkReady(false);
+    setLedgerLink('');
+
+    const failSafe = window.setTimeout(() => {
+      if (active) setLinkReady(true);
+    }, 12000);
+
+    (async () => {
+      try {
+        const res = await customerApi.ensureShareLink(customer.id);
+        if (!active) return;
+        const token = res?.token || res?.customer?.ledgerShareToken || '';
+        const link = buildLedgerShareUrl(token);
+        setLedgerLink(link);
+      } catch {
+        if (active) setLedgerLink('');
+      } finally {
+        window.clearTimeout(failSafe);
+        if (active) setLinkReady(true);
+      }
+    })();
+
+    return () => {
+      active = false;
+      window.clearTimeout(failSafe);
+    };
+  }, [customer?.id, customer?.ledgerShareToken]);
 
   const template = useMemo(() => buildReminderMessage({
     lang: msgLang,
@@ -19,14 +60,21 @@ export default function ReminderModal({ customer, onClose, onSent, shopInfo }) {
     t,
     name: customer.name,
     amount: customer.balance,
-  }), [msgLang, customer.name, customer.balance, shopInfo, t]);
+    ledgerLink,
+  }), [msgLang, customer.name, customer.balance, shopInfo, t, ledgerLink]);
 
-  const finalMsg = useCustom ? customMsg : template;
+  useEffect(() => {
+    if (!useCustom) return;
+    setCustomMsg(prev => appendLedgerLinkToMessage(prev || template, ledgerLink, msgLang));
+  }, [ledgerLink]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const finalMsg = useCustom
+    ? appendLedgerLinkToMessage(customMsg, ledgerLink, msgLang)
+    : template;
   const waPhone = (() => {
     const cc = (shopInfo?.whatsappCountryCode || '91').replace(/\D/g, '') || '91';
     let digits = String(customer.phone || '').replace(/\D/g, '');
     if (!digits) return '';
-    // Strip leading 0 (local format) and avoid double country code (e.g. 91 already in number)
     if (digits.startsWith('0')) digits = digits.replace(/^0+/, '');
     if (digits.startsWith(cc)) return digits;
     if (digits.length > 10) return digits;
@@ -78,7 +126,7 @@ export default function ReminderModal({ customer, onClose, onSent, shopInfo }) {
           </div>
           <button type="button" onClick={onClose} className="w-9 h-9 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 transition-colors focus-ring" aria-label="Close"><Ico.X className="w-4 h-4" /></button>
         </div>
-        
+
         <div className="p-5 overflow-y-auto flex-1">
           <div className="sm:grid sm:grid-cols-12 sm:gap-5 sm:items-start">
             <div className="space-y-4 sm:col-span-8">
@@ -124,20 +172,51 @@ export default function ReminderModal({ customer, onClose, onSent, shopInfo }) {
                 ) : (
                   <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-medium leading-relaxed whitespace-pre-line text-gray-700 min-h-[220px] sm:min-h-[260px]">{template}</div>
                 )}
+                {ledgerLink ? (
+                  <p className="mt-2 text-[11px] text-slate-500 break-all">
+                    Ledger link included: <a href={ledgerLink} target="_blank" rel="noreferrer" className="text-primary-600 font-medium underline">{ledgerLink}</a>
+                  </p>
+                ) : !linkReady ? (
+                  <p className="mt-2 text-[11px] text-amber-600">Preparing ledger download link…</p>
+                ) : (
+                  <p className="mt-2 text-[11px] text-amber-700">Ledger link unavailable — you can still send the reminder text.</p>
+                )}
               </div>
             </div>
-            
+
             <div className="mt-5 space-y-2.5 sm:mt-0 sm:col-span-4 sm:sticky sm:top-5">
-                <a href={waLink} target="_blank" rel="noreferrer" onClick={handleSend} className="flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#128C7E] text-white font-semibold py-3 rounded-lg transition-all active:scale-95 text-sm w-full shadow-sm">
-                  <Ico.WA className="w-4 h-4" /> {sending ? 'Wait...' : 'Send via WhatsApp'}
-              </a>
-                <a href={smsLink} onClick={handleSend} className="flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 rounded-lg transition-all active:scale-95 text-sm w-full shadow-sm">
-                  <Ico.SMS className="w-4 h-4" /> {sending ? 'Wait...' : 'Send SMS'}
-              </a>
-              <button onClick={handleCopy} className={`flex items-center justify-center gap-2 border py-3 rounded-lg transition-all active:scale-95 text-sm w-full font-medium ${copied ? 'border-primary-200 text-primary-700 bg-primary-50' : 'border-gray-200 text-gray-700 hover:bg-gray-50'}`}>
+                <a
+                  href={linkReady ? waLink : undefined}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={(e) => {
+                    if (!linkReady) {
+                      e.preventDefault();
+                      return;
+                    }
+                    handleSend();
+                  }}
+                  className={`flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#128C7E] text-white font-semibold py-3 rounded-lg transition-all active:scale-95 text-sm w-full shadow-sm ${!linkReady ? 'opacity-60 pointer-events-none' : ''}`}
+                >
+                  <Ico.WA className="w-4 h-4" /> {!linkReady ? 'Preparing…' : sending ? 'Wait...' : 'Send via WhatsApp'}
+                </a>
+                <a
+                  href={linkReady ? smsLink : undefined}
+                  onClick={(e) => {
+                    if (!linkReady) {
+                      e.preventDefault();
+                      return;
+                    }
+                    handleSend();
+                  }}
+                  className={`flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 rounded-lg transition-all active:scale-95 text-sm w-full shadow-sm ${!linkReady ? 'opacity-60 pointer-events-none' : ''}`}
+                >
+                  <Ico.SMS className="w-4 h-4" /> {!linkReady ? 'Preparing…' : sending ? 'Wait...' : 'Send SMS'}
+                </a>
+              <button onClick={handleCopy} disabled={!linkReady} className={`flex items-center justify-center gap-2 border py-3 rounded-lg transition-all active:scale-95 text-sm w-full font-medium disabled:opacity-50 ${copied ? 'border-primary-200 text-primary-700 bg-primary-50' : 'border-gray-200 text-gray-700 hover:bg-gray-50'}`}>
                 {copied ? <><Ico.Check className="w-4 h-4" /> Copied</> : <><Ico.Copy className="w-4 h-4" /> Copy Message</>}
               </button>
-              
+
               <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 mt-1.5">
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 mb-0.5">Last Reminder</p>
                 <p className="text-xs font-semibold text-gray-900">{lastReminderText}</p>

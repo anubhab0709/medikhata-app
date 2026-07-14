@@ -5,6 +5,8 @@ import SearchInput from '../components/SearchInput.jsx';
 import CustomerAvatar from '../components/CustomerAvatar.jsx';
 import { fmtCur, daysDiff } from '../utils/data.js';
 import { useLang, buildReminderMessage, DEFAULT_MESSAGE_EN, DEFAULT_MESSAGE_BN, fillReminderTemplate } from '../context/lang.jsx';
+import { buildLedgerShareUrl } from '../utils/ledgerShare.js';
+import { customerApi } from '../utils/api.js';
 
 function PaperPlaneIcon() {
   return (
@@ -39,6 +41,7 @@ export default function RemindersPage({ customers, shopInfo, onOpenReminder, onS
   ));
   const [bulkUseCustom, setBulkUseCustom] = useState(false);
   const [bulkCustomMsg, setBulkCustomMsg] = useState(() => shopInfo?.messageEn || DEFAULT_MESSAGE_EN);
+  const [shareLinksById, setShareLinksById] = useState({});
 
   const sortOptions = [
     ['due', 'Amount', t.sortByDue],
@@ -65,6 +68,7 @@ export default function RemindersPage({ customers, shopInfo, onOpenReminder, onS
 
   const buildBulkMessage = useCallback((customer) => {
     if (!customer) return '';
+    const ledgerLink = shareLinksById[customer.id] || buildLedgerShareUrl(customer.ledgerShareToken);
     if (!bulkUseCustom) {
       return buildReminderMessage({
         lang: bulkMsgLang,
@@ -72,17 +76,26 @@ export default function RemindersPage({ customers, shopInfo, onOpenReminder, onS
         t,
         name: customer.name,
         amount: customer.balance,
+        ledgerLink,
       });
     }
     const amount = `₹${Math.abs(Math.round(customer.balance)).toLocaleString('en-IN')}`;
-    return fillReminderTemplate(bulkCustomMsg, {
+    const filled = fillReminderTemplate(bulkCustomMsg, {
       name: customer.name,
       amount,
       shop: shopInfo?.shopName || '',
       owner: shopInfo?.ownerName || '',
       phone: shopInfo?.shopPhone || '',
+      ledgerLink,
     });
-  }, [bulkUseCustom, bulkCustomMsg, bulkMsgLang, shopInfo, t]);
+    if (ledgerLink && !filled.includes(ledgerLink)) {
+      const label = bulkMsgLang === 'bn'
+        ? 'আপনার লেজার / PDF দেখুন বা ডাউনলোড করুন:'
+        : 'View / download your ledger PDF:';
+      return `${filled}\n\n${label}\n${ledgerLink}`;
+    }
+    return filled;
+  }, [bulkUseCustom, bulkCustomMsg, bulkMsgLang, shopInfo, t, shareLinksById]);
 
   const bulkPreviewCustomers = useMemo(() => selectedCustomers.map(customer => ({
     customer,
@@ -103,7 +116,7 @@ export default function RemindersPage({ customers, shopInfo, onOpenReminder, onS
   const selectAllDue = () => setSelectedIds(dueCustomers.map(c => c.id));
   const deselectAllDue = () => setSelectedIds([]);
 
-  const openBulkModal = () => {
+  const openBulkModal = async () => {
     const lang = shopInfo?.defaultTemplateLang === 'en' || shopInfo?.messageLanguage === 'en' ? 'en' : 'bn';
     setBulkMsgLang(lang);
     setBulkUseCustom(false);
@@ -113,6 +126,22 @@ export default function RemindersPage({ customers, shopInfo, onOpenReminder, onS
         : (shopInfo?.messageEn || DEFAULT_MESSAGE_EN)
     );
     setShowBulkModal(true);
+
+    const nextLinks = { ...shareLinksById };
+    await Promise.all(selectedCustomers.map(async (c) => {
+      const existing = nextLinks[c.id] || buildLedgerShareUrl(c.ledgerShareToken);
+      if (existing) {
+        nextLinks[c.id] = existing;
+        return;
+      }
+      try {
+        const res = await customerApi.ensureShareLink(c.id);
+        nextLinks[c.id] = buildLedgerShareUrl(res?.token || res?.customer?.ledgerShareToken);
+      } catch {
+        // Keep message without link if share creation fails
+      }
+    }));
+    setShareLinksById(nextLinks);
   };
 
   return (

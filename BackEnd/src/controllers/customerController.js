@@ -2,6 +2,13 @@ import mongoose from 'mongoose';
 import { Customer } from '../models/Customer.js';
 import { Transaction } from '../models/Transaction.js';
 import { recalculateTransactions } from '../utils/ledger.js';
+import { ensureCustomerShareToken } from './publicLedgerController.js';
+import {
+  findCustomerByPhone,
+  normalizePhoneDigits,
+  validateCustomerName,
+  validateCustomerPhone,
+} from '../utils/customerValidation.js';
 
 const VALID_TYPES = new Set(['credit', 'debit']);
 
@@ -31,6 +38,7 @@ const toClientCustomer = (customerDoc, transactions = []) => ({
   lastReminded: customerDoc.lastReminded ? new Date(customerDoc.lastReminded).toISOString() : null,
   firstReminderAt: customerDoc.firstReminderAt ? new Date(customerDoc.firstReminderAt).toISOString() : null,
   reminderCount: customerDoc.reminderCount || 0,
+  ledgerShareToken: customerDoc.ledgerShareToken || null,
   transactions: transactions.map((tx) => ({
     id: tx.id,
     type: tx.type,
@@ -228,25 +236,59 @@ export async function getCustomer(req, res) {
 export async function createCustomer(req, res) {
   try {
     const { name, phone = '', area = '' } = req.body || {};
-    if (!name || !String(name).trim()) {
-      return res.status(400).json({ message: 'Customer name is required' });
+    const nameError = validateCustomerName(name);
+    if (nameError) return res.status(400).json({ message: nameError });
+
+    const phoneError = validateCustomerPhone(phone);
+    if (phoneError) return res.status(400).json({ message: phoneError });
+
+    const phoneDigits = normalizePhoneDigits(phone);
+    const duplicate = await findCustomerByPhone(Customer, req.user.id, phoneDigits);
+    if (duplicate) {
+      return res.status(409).json({
+        message: `A customer with this number already exists (${duplicate.name})`,
+      });
     }
 
     const customer = await Customer.create({
       ownerId: req.user.id,
       name: String(name).trim(),
-      phone: String(phone).trim(),
-      area: String(area).trim(),
+      phone: phoneDigits,
+      area: String(area || '').trim(),
       balance: 0,
       lastActivity: new Date(),
       reminderCount: 0,
       lastReminded: null,
       firstReminderAt: null,
+      ledgerShareToken: null,
     });
+
+    await ensureCustomerShareToken(customer);
 
     return res.status(201).json({ customer: toClientCustomer(customer, []) });
   } catch {
     return res.status(500).json({ message: 'Failed to create customer' });
+  }
+}
+
+export async function ensureCustomerShareLink(req, res) {
+  try {
+    const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: 'Invalid customer ID' });
+    }
+    const customer = await Customer.findOne({ _id: id, ownerId: req.user.id });
+    if (!customer) return res.status(404).json({ message: 'Customer not found' });
+
+    const token = await ensureCustomerShareToken(customer);
+    return res.json({
+      token,
+      urlPath: `/l/${token}`,
+      customer: toClientCustomer(customer, []),
+    });
+  } catch (err) {
+    console.error('ensureCustomerShareLink failed:', err?.message || err);
+    return res.status(500).json({ message: 'Failed to create share link' });
   }
 }
 
@@ -258,15 +300,29 @@ export async function updateCustomer(req, res) {
     }
 
     const { name, phone, area } = req.body || {};
-    if (name !== undefined && !String(name).trim()) {
-      return res.status(400).json({ message: 'Customer name is required' });
+    if (name !== undefined) {
+      const nameError = validateCustomerName(name);
+      if (nameError) return res.status(400).json({ message: nameError });
+    }
+    if (phone !== undefined) {
+      const phoneError = validateCustomerPhone(phone);
+      if (phoneError) return res.status(400).json({ message: phoneError });
     }
 
     const customer = await Customer.findOne({ _id: id, ownerId: req.user.id });
     if (!customer) return res.status(404).json({ message: 'Customer not found' });
 
+    if (phone !== undefined) {
+      const phoneDigits = normalizePhoneDigits(phone);
+      const duplicate = await findCustomerByPhone(Customer, req.user.id, phoneDigits, customer._id);
+      if (duplicate) {
+        return res.status(409).json({
+          message: `A customer with this number already exists (${duplicate.name})`,
+        });
+      }
+      customer.phone = phoneDigits;
+    }
     if (name !== undefined) customer.name = String(name).trim();
-    if (phone !== undefined) customer.phone = String(phone).trim();
     if (area !== undefined) customer.area = String(area).trim();
     await customer.save();
 

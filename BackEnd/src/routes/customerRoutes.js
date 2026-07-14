@@ -4,6 +4,7 @@ import {
   createCustomer,
   deleteCustomer,
   deleteTransaction,
+  ensureCustomerShareLink,
   getCustomer,
   getDashboardSummary,
   listCustomers,
@@ -19,12 +20,13 @@ router.use(requireAuth);
 
 router.get('/', listCustomers);
 router.get('/dashboard-summary', getDashboardSummary);
-router.get('/:id', getCustomer);
+router.post('/reminders/mark-bulk', markBulkReminders);
 router.post('/', createCustomer);
+router.post('/:id/share-link', ensureCustomerShareLink);
+router.post('/:id/reminders/mark', markCustomerReminder);
+router.get('/:id', getCustomer);
 router.put('/:id', updateCustomer);
 router.delete('/:id', deleteCustomer);
-router.post('/reminders/mark-bulk', markBulkReminders);
-router.post('/:id/reminders/mark', markCustomerReminder);
 
 router.post('/:id/transactions', addTransaction);
 router.put('/:id/transactions/:txnId', updateTransaction);

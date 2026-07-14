@@ -3,6 +3,7 @@ import Ico from '../utils/icons.jsx';
 import PageHero from '../components/PageHero.jsx';
 import SearchInput from '../components/SearchInput.jsx';
 import CustomerAvatar from '../components/CustomerAvatar.jsx';
+import ConfirmToast from '../components/ConfirmToast.jsx';
 import { fmtCur, formatDate } from '../utils/data.js';
 import { useLang } from '../context/lang.jsx';
 
@@ -22,11 +23,47 @@ function lastTxnLabel(customer) {
   return 'No activity yet';
 }
 
-export default function CustomerListPage({ customers, onSelect, onAddCust }) {
+function buildDeleteConfirm(selected) {
+  const dueCount = selected.filter(c => c.balance > 0).length;
+  const advanceCount = selected.filter(c => c.balance < 0).length;
+  const settledCount = selected.filter(c => c.balance === 0).length;
+  const dueTotal = selected.filter(c => c.balance > 0).reduce((s, c) => s + c.balance, 0);
+  const advanceTotal = selected.filter(c => c.balance < 0).reduce((s, c) => s + Math.abs(c.balance), 0);
+
+  const title = selected.length === 1
+    ? `Delete ${selected[0].name}?`
+    : `Delete ${selected.length} customers?`;
+
+  const parts = [];
+  if (dueCount > 0) {
+    parts.push(`${dueCount} with due (${fmtCur(dueTotal)})`);
+  }
+  if (advanceCount > 0) {
+    parts.push(`${advanceCount} with advance (${fmtCur(advanceTotal)})`);
+  }
+  if (settledCount > 0) {
+    parts.push(`${settledCount} settled`);
+  }
+
+  let message;
+  if (dueCount > 0 || advanceCount > 0) {
+    message = `Some selected accounts are not clear (${parts.join(', ')}). Deleting will permanently remove their ledger history. Are you sure you want to delete?`;
+  } else {
+    message = `This will permanently remove ${selected.length === 1 ? 'this customer and their' : 'these customers and their'} ledger history. This cannot be undone.`;
+  }
+
+  return { title, message };
+}
+
+export default function CustomerListPage({ customers, onSelect, onAddCust, onDeleteCustomers }) {
   const t = useLang();
   const [q, setQ] = useState('');
   const [filter, setFilt] = useState('all');
   const [showFab, setShowFab] = useState(true);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const scrollRef = useRef(null);
   const lastScrollTopRef = useRef(0);
 
@@ -50,6 +87,11 @@ export default function CustomerListPage({ customers, onSelect, onAddCust }) {
     return list;
   }, [customers, q, filter]);
 
+  const selectedCustomers = useMemo(
+    () => customers.filter(c => selectedIds.includes(c.id)),
+    [customers, selectedIds],
+  );
+
   const onSearch = useCallback(e => { setQ(e.target.value); }, []);
 
   useEffect(() => {
@@ -70,6 +112,46 @@ export default function CustomerListPage({ customers, onSelect, onAddCust }) {
     return () => node.removeEventListener('scroll', onScroll);
   }, []);
 
+  const exitSelectMode = () => {
+    setSelectMode(false);
+    setSelectedIds([]);
+    setConfirmOpen(false);
+  };
+
+  const toggleSelectMode = () => {
+    if (selectMode) exitSelectMode();
+    else {
+      setSelectMode(true);
+      setSelectedIds([]);
+    }
+  };
+
+  const toggleSelected = (id) => {
+    setSelectedIds(prev => (prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]));
+  };
+
+  const selectAllFiltered = () => setSelectedIds(filtered.map(c => c.id));
+  const clearSelected = () => setSelectedIds([]);
+
+  const requestDelete = () => {
+    if (!selectedCustomers.length) return;
+    setConfirmOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!selectedCustomers.length || deleting) return;
+    setDeleting(true);
+    try {
+      await onDeleteCustomers?.(selectedCustomers.map(c => c.id));
+      exitSelectMode();
+    } finally {
+      setDeleting(false);
+      setConfirmOpen(false);
+    }
+  };
+
+  const confirmCopy = buildDeleteConfirm(selectedCustomers);
+
   return (
     <div className="flex flex-col h-full overflow-hidden bg-slate-50">
       <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-md border-b border-slate-200/80">
@@ -79,30 +161,83 @@ export default function CustomerListPage({ customers, onSelect, onAddCust }) {
           subtitle="Manage customer ledgers, dues, and payments"
           badge={`${filtered.length}`}
         >
-          <SearchInput id="customer-search" value={q} onChange={onSearch} placeholder={t.search} />
+          <div className="flex items-center gap-2">
+            <div className="min-w-0 flex-1">
+              <SearchInput id="customer-search" value={q} onChange={onSearch} placeholder={t.search} />
+            </div>
+            <button
+              type="button"
+              onClick={toggleSelectMode}
+              className={`shrink-0 inline-flex items-center gap-1.5 rounded-xl border px-3 min-h-10 text-xs font-semibold transition-colors focus-ring ${
+                selectMode
+                  ? 'border-red-200 bg-red-50 text-red-700'
+                  : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+              }`}
+              aria-pressed={selectMode}
+            >
+              <Ico.Trash className="w-3.5 h-3.5" />
+              {selectMode ? 'Cancel' : 'Delete'}
+            </button>
+          </div>
         </PageHero>
 
-        <div className="page-shell pt-3 pb-3 sm:pt-3.5 sm:pb-3.5 flex justify-center">
-          <div className="segmented grid-cols-4 w-full sm:max-w-lg">
-            <span
-              className="segmented-thumb"
-              style={{
-                left: `calc(${activeIndex} * 25% + 0.25rem)`,
-                width: 'calc(25% - 0.5rem)',
-              }}
-            />
-            {filterOptions.map(([v, l]) => (
-              <button
-                key={v}
-                type="button"
-                onClick={() => setFilt(v)}
-                aria-pressed={filter === v}
-                className={`segmented-btn focus-ring ${filter === v ? 'is-active' : 'hover:text-slate-700'}`}
-              >
-                {l}
-              </button>
-            ))}
+        <div className="page-shell pt-3 pb-3 sm:pt-3.5 sm:pb-3.5 space-y-2.5">
+          <div className="flex justify-center">
+            <div className="segmented grid-cols-4 w-full sm:max-w-lg">
+              <span
+                className="segmented-thumb"
+                style={{
+                  left: `calc(${activeIndex} * 25% + 0.25rem)`,
+                  width: 'calc(25% - 0.5rem)',
+                }}
+              />
+              {filterOptions.map(([v, l]) => (
+                <button
+                  key={v}
+                  type="button"
+                  onClick={() => setFilt(v)}
+                  aria-pressed={filter === v}
+                  className={`segmented-btn focus-ring ${filter === v ? 'is-active' : 'hover:text-slate-700'}`}
+                >
+                  {l}
+                </button>
+              ))}
+            </div>
           </div>
+
+          {selectMode && (
+            <div className="flex items-center justify-between gap-2 rounded-xl border border-red-200 bg-red-50/70 px-2.5 py-2 sm:px-4">
+              <p className="text-xs sm:text-sm font-semibold text-red-700 shrink-0">
+                {selectedIds.length} selected
+              </p>
+              <div className="flex items-center gap-1.5 min-w-0">
+                <button
+                  type="button"
+                  onClick={selectAllFiltered}
+                  disabled={selectedIds.length === filtered.length || filtered.length === 0}
+                  className="btn-secondary btn-sm border-red-200 text-red-700 hover:bg-white disabled:opacity-50"
+                >
+                  Select all
+                </button>
+                <button
+                  type="button"
+                  onClick={clearSelected}
+                  disabled={!selectedIds.length}
+                  className="btn-secondary btn-sm border-slate-200 text-slate-600 hover:bg-white disabled:opacity-50"
+                >
+                  Clear
+                </button>
+                <button
+                  type="button"
+                  onClick={requestDelete}
+                  disabled={!selectedIds.length || deleting}
+                  className="btn btn-sm !bg-red-600 hover:!bg-red-700 shrink-0 disabled:opacity-50"
+                >
+                  <Ico.Trash className="w-3.5 h-3.5" /> Delete
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -118,16 +253,48 @@ export default function CustomerListPage({ customers, onSelect, onAddCust }) {
             {filtered.map(c => {
               const badge = balanceBadge(c.balance, t);
               const borderTone = c.balance > 0 ? 'border-red-100 hover:border-red-200' : c.balance < 0 ? 'border-emerald-100 hover:border-emerald-200' : 'border-slate-200 hover:border-slate-300';
+              const isSelected = selectedIds.includes(c.id);
 
               return (
-                <button
+                <article
                   key={c.id}
-                  type="button"
-                  onClick={() => onSelect(c)}
-                  className={`customer-card group ${borderTone}`}
-                  aria-label={`Open ledger for ${c.name}`}
+                  role={selectMode ? undefined : 'button'}
+                  tabIndex={selectMode ? undefined : 0}
+                  onClick={() => {
+                    if (selectMode) toggleSelected(c.id);
+                    else onSelect(c);
+                  }}
+                  onKeyDown={(e) => {
+                    if (selectMode) return;
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      onSelect(c);
+                    }
+                  }}
+                  className={`customer-card group text-left w-full ${borderTone} ${isSelected ? 'ring-2 ring-red-400/50 border-red-300' : ''} ${selectMode ? 'cursor-pointer' : ''}`}
+                  aria-label={selectMode ? `Select ${c.name}` : `Open ledger for ${c.name}`}
                 >
                   <div className="flex items-center gap-2.5 sm:gap-3">
+                    {selectMode && (
+                      <label
+                        className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border cursor-pointer transition-colors ${isSelected ? 'bg-red-600 border-red-600 text-white' : 'border-slate-300 bg-white hover:border-red-400'}`}
+                        onClick={e => e.stopPropagation()}
+                      >
+                        {isSelected && (
+                          <svg className="w-3 h-3" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                        )}
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleSelected(c.id)}
+                          className="sr-only"
+                          aria-label={`Select ${c.name}`}
+                        />
+                      </label>
+                    )}
+
                     <CustomerAvatar name={c.name} balance={c.balance} size="md" />
 
                     <div className="min-w-0 flex-1">
@@ -155,27 +322,41 @@ export default function CustomerListPage({ customers, onSelect, onAddCust }) {
                     </div>
                   </div>
 
-                  <div className="mt-2.5 sm:mt-3 pt-2 sm:pt-3 border-t border-slate-100 flex items-center justify-between">
-                    <span className="text-[10px] sm:text-[11px] font-medium text-slate-500 group-hover:text-primary-600 transition-colors">View ledger</span>
-                    <span className="text-primary-500 group-hover:translate-x-0.5 transition-transform"><Ico.Chev /></span>
-                  </div>
-                </button>
+                  {!selectMode && (
+                    <div className="mt-2.5 sm:mt-3 pt-2 sm:pt-3 border-t border-slate-100 flex items-center justify-between">
+                      <span className="text-[10px] sm:text-[11px] font-medium text-slate-500 group-hover:text-primary-600 transition-colors">View ledger</span>
+                      <span className="text-primary-500 group-hover:translate-x-0.5 transition-transform"><Ico.Chev /></span>
+                    </div>
+                  )}
+                </article>
               );
             })}
           </div>
         )}
       </div>
 
-      {/* Desktop FAB only — mobile uses bottom-nav Add */}
-      <button
-        type="button"
-        onClick={onAddCust}
-        className={`hidden sm:flex fixed bottom-6 left-1/2 z-30 -translate-x-1/2 items-center gap-2 rounded-full bg-primary-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-primary-600/25 transition-all duration-300 hover:bg-primary-700 hover:shadow-xl active:scale-95 focus-ring ${showFab ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
-        aria-label={t.newCustomer}
-      >
-        <Ico.Plus />
-        <span>{t.newCustomer}</span>
-      </button>
+      {!selectMode && (
+        <button
+          type="button"
+          onClick={onAddCust}
+          className={`hidden sm:flex fixed bottom-6 left-1/2 z-30 -translate-x-1/2 items-center gap-2 rounded-full bg-primary-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-primary-600/25 transition-all duration-300 hover:bg-primary-700 hover:shadow-xl active:scale-95 focus-ring ${showFab ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+          aria-label={t.newCustomer}
+        >
+          <Ico.Plus />
+          <span>{t.newCustomer}</span>
+        </button>
+      )}
+
+      <ConfirmToast
+        open={confirmOpen}
+        title={confirmCopy.title}
+        message={confirmCopy.message}
+        confirmLabel={deleting ? 'Deleting…' : 'Delete'}
+        cancelLabel="Cancel"
+        variant="danger"
+        onCancel={() => !deleting && setConfirmOpen(false)}
+        onConfirm={confirmDelete}
+      />
     </div>
   );
 }

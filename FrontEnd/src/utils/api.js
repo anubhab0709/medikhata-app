@@ -78,9 +78,9 @@ async function request(path, options = {}) {
     clearTimeout(timeoutId);
   }
 
-  if (response.status === 401 && !PUBLIC_AUTH_PATHS.has(path)) {
+  if (response.status === 401 && !PUBLIC_AUTH_PATHS.has(path) && !path.startsWith('/public/')) {
     clearAuthToken();
-    if (!window.location.pathname.startsWith('/login')) {
+    if (!window.location.pathname.startsWith('/login') && !window.location.pathname.startsWith('/l/')) {
       window.location.href = '/login';
     }
     throw new Error('Session expired');
@@ -157,6 +157,11 @@ export const customerApi = {
   create: (body) => request('/customers', { method: 'POST', body: JSON.stringify(body) }),
   update: (customerId, body) => request(`/customers/${customerId}`, { method: 'PUT', body: JSON.stringify(body) }),
   remove: (customerId) => request(`/customers/${customerId}`, { method: 'DELETE' }),
+  ensureShareLink: (customerId) => request(`/customers/${customerId}/share-link`, { method: 'POST' }),
+};
+
+export const publicApi = {
+  getLedger: (token) => request(`/public/ledger/${encodeURIComponent(token)}`),
 };
 
 export const transactionApi = {

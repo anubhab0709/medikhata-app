@@ -17,7 +17,7 @@ function PaperPlaneIcon() {
   );
 }
 
-export default function LedgerPage({ customer, shopInfo, onBack, onAddTxn, onEditTxn, onDeleteTxn, onDeleteCustomer, onOpenReminder, onEditCustomer }) {
+export default function LedgerPage({ customer, customers = [], shopInfo, onBack, onAddTxn, onEditTxn, onDeleteTxn, onDeleteCustomer, onOpenReminder, onEditCustomer }) {
   const t = useLang();
   const [modalType, setModalType] = useState(null);
   const [editTxn, setEditTxn] = useState(null);
@@ -565,6 +565,7 @@ export default function LedgerPage({ customer, shopInfo, onBack, onAddTxn, onEdi
       {showEditCust && (
         <EditCustModal
           customer={customer}
+          customers={customers}
           onClose={() => setShowEditCust(false)}
           onSave={(payload) => onEditCustomer(customer.id, payload)}
         />

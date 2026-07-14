@@ -5,6 +5,7 @@ import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import authRoutes from './routes/authRoutes.js';
 import customerRoutes from './routes/customerRoutes.js';
 import supportRoutes from './routes/supportRoutes.js';
+import publicRoutes from './routes/publicRoutes.js';
 import morgan from 'morgan';
 import compression from 'compression';
 import cookieParser from 'cookie-parser';
@@ -99,26 +100,27 @@ app.use(cookieParser());
 app.get('/', (_req, res) => {
   res.json({
     ok: true,
-    service: 'medikhata-api',
+    service: 'khataapp-api',
     health: '/api/health',
     docs: 'API base path is /api',
   });
 });
 
 app.get('/api/health', (_req, res) => {
-  res.json({ ok: true, service: 'medikhata-api' });
+  res.json({ ok: true, service: 'khataapp-api' });
 });
 
 app.get('/api', (_req, res) => {
   res.json({
     ok: true,
-    service: 'medikhata-api',
-    message: 'MediKhata API root. Use a specific endpoint.',
+    service: 'khataapp-api',
+    message: 'KhataApp API root. Use a specific endpoint.',
     endpoints: {
       health: 'GET /api/health',
       auth: '/api/auth/*',
       customers: '/api/customers/*',
       support: '/api/support/*',
+      public: '/api/public/*',
     },
   });
 });
@@ -135,6 +137,7 @@ app.use('/api/auth/change-password', passwordChangeLimiter);
 app.use('/api/auth', authRoutes);
 app.use('/api/customers', generalLimiter, customerRoutes);
 app.use('/api/support', generalLimiter, supportRoutes);
+app.use('/api/public', generalLimiter, publicRoutes);
 
 app.use('/api', (_req, res) => {
   res.status(404).json({ message: 'Endpoint not found' });

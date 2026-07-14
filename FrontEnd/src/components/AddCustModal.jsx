@@ -1,19 +1,35 @@
 import { useState } from 'react';
 import Ico from './Ico.jsx';
 import { useLang } from '../context/lang.jsx';
+import {
+  normalizePhoneDigits,
+  validateCustomerForm,
+  findDuplicateCustomerByPhone,
+} from '../utils/customerValidation.js';
 
-export default function AddCustModal({ onClose, onAdd }) {
+export default function AddCustModal({ onClose, onAdd, customers = [] }) {
   const t = useLang();
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [area, setArea] = useState('');
   const [loadingContact, setLoadingContact] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
 
-  const fields = [
-    { l: t.fullName, v: name, s: setName, p: t.namePlaceholder, tp: 'text', auto: 'name', mode: 'text' },
-    { l: t.phone, v: phone, s: setPhone, p: t.phonePlaceholder, tp: 'tel', auto: 'tel', mode: 'tel' },
-    { l: t.area, v: area, s: setArea, p: t.areaPlaceholder, tp: 'text', auto: 'street-address', mode: 'text' },
-  ];
+  const setNameSafe = (value) => {
+    setName(String(value || '').slice(0, 25));
+    setError('');
+  };
+
+  const setPhoneSafe = (value) => {
+    // Keep only digits in the field, max 10 (after stripping country junk on paste)
+    const digits = normalizePhoneDigits(value).slice(0, 10);
+    // If user is typing mid-entry (not yet 10), allow raw digit typing up to 10
+    const raw = String(value || '').replace(/\D/g, '');
+    if (raw.length <= 10) setPhone(raw.slice(0, 10));
+    else setPhone(digits);
+    setError('');
+  };
 
   const pickFromContacts = async () => {
     if (!navigator?.contacts?.select) {
@@ -27,10 +43,43 @@ export default function AddCustModal({ onClose, onAdd }) {
       const selected = contacts?.[0];
       if (!selected) return;
 
-      if (selected.name?.length) setName(selected.name[0] || '');
-      if (selected.tel?.length) setPhone(selected.tel[0] || '');
+      if (selected.name?.length) setNameSafe(selected.name[0] || '');
+      if (selected.tel?.length) setPhoneSafe(selected.tel[0] || '');
     } finally {
       setLoadingContact(false);
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (saving) return;
+
+    const validationError = validateCustomerForm({ name, phone });
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
+    const phoneDigits = normalizePhoneDigits(phone);
+    const duplicate = findDuplicateCustomerByPhone(customers, phoneDigits);
+    if (duplicate) {
+      setError(`A customer with this number already exists (${duplicate.name})`);
+      return;
+    }
+
+    setSaving(true);
+    setError('');
+    try {
+      await onAdd({
+        name: name.trim(),
+        phone: phoneDigits,
+        area: area.trim(),
+      });
+      onClose();
+    } catch (err) {
+      setError(err?.message || 'Unable to save customer');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -50,33 +99,59 @@ export default function AddCustModal({ onClose, onAdd }) {
               <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 mb-1.5">From Contacts</p>
               <p className="text-xs font-medium text-gray-600 leading-relaxed mb-3">Use your phone contacts to quickly fill the customer name and phone number.</p>
               <button
+                type="button"
                 onClick={pickFromContacts}
-                disabled={loadingContact}
+                disabled={loadingContact || saving}
                 className="btn-secondary w-full text-xs py-1.5"
               >
                 <Ico.Users className="w-4 h-4" /> {loadingContact ? 'Opening...' : 'From Contacts'}
               </button>
             </div>
 
-            <form onSubmit={(e) => { e.preventDefault(); if (!name.trim()) return; onAdd({ id: Date.now(), name: name.trim(), phone, area, balance: 0, transactions: [], lastActivity: new Date().toISOString(), lastReminded: null, firstReminderAt: null, reminderCount: 0 }); onClose(); }}>
+            <form onSubmit={handleSubmit}>
               <div className="space-y-3">
-                {fields.map(f => (
-                <div key={f.l} className="space-y-1">
-                  <label className="block text-[11px] font-medium text-gray-600 mb-1">{f.l}</label>
+                <div className="space-y-1">
+                  <label className="block text-[11px] font-medium text-gray-600 mb-1">{t.fullName}</label>
                   <input
-                    type={f.tp}
-                    value={f.v}
-                    onChange={e => f.s(e.target.value)}
-                    placeholder={f.p}
-                    autoComplete={f.auto}
-                    inputMode={f.mode}
+                    type="text"
+                    value={name}
+                    onChange={e => setNameSafe(e.target.value)}
+                    placeholder={t.namePlaceholder}
+                    autoComplete="name"
+                    maxLength={25}
+                    className="input"
+                  />
+                  <p className="text-[10px] text-slate-400">{name.trim().length}/25 characters · letters only</p>
+                </div>
+                <div className="space-y-1">
+                  <label className="block text-[11px] font-medium text-gray-600 mb-1">{t.phone}</label>
+                  <input
+                    type="tel"
+                    value={phone}
+                    onChange={e => setPhoneSafe(e.target.value)}
+                    placeholder="10 digit mobile number"
+                    autoComplete="tel"
+                    inputMode="numeric"
+                    maxLength={10}
+                    className="input"
+                  />
+                  <p className="text-[10px] text-slate-400">{phone.length}/10 digits</p>
+                </div>
+                <div className="space-y-1">
+                  <label className="block text-[11px] font-medium text-gray-600 mb-1">{t.area}</label>
+                  <input
+                    type="text"
+                    value={area}
+                    onChange={e => setArea(e.target.value)}
+                    placeholder={t.areaPlaceholder}
+                    autoComplete="street-address"
                     className="input"
                   />
                 </div>
-                ))}
               </div>
-              <button type="submit" disabled={!name.trim()} className="btn w-full mt-5">
-                <Ico.Check className="w-4 h-4" /> {t.saveCustomer}
+              {error && <p className="mt-3 text-xs font-medium text-red-600">{error}</p>}
+              <button type="submit" disabled={!name.trim() || saving} className="btn w-full mt-5">
+                <Ico.Check className="w-4 h-4" /> {saving ? 'Saving...' : t.saveCustomer}
               </button>
             </form>
           </div>
@@ -88,8 +163,9 @@ export default function AddCustModal({ onClose, onAdd }) {
                 On mobile, you can import a customer directly from your device contacts. This keeps entry fast and reduces typing.
               </p>
               <button
+                type="button"
                 onClick={pickFromContacts}
-                disabled={loadingContact}
+                disabled={loadingContact || saving}
                 className="btn-secondary w-full text-xs py-1.5"
               >
                 <Ico.Users className="w-4 h-4" /> {loadingContact ? 'Opening...' : 'From Contacts'}

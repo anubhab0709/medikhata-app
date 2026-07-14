@@ -18,6 +18,9 @@ export default function Logo({
       lineFaint: 'rgba(255,255,255,0.45)',
       shield: 'rgba(255,255,255,0.28)',
       spine: 'rgba(255,255,255,0.55)',
+      checkStroke: '#2563EB',
+      checkFill: '#FFFFFF',
+      transparent: false,
     },
     dark: {
       bg: '#0F172A',
@@ -28,6 +31,8 @@ export default function Logo({
       lineFaint: 'rgba(148,163,184,0.55)',
       shield: 'rgba(96,165,250,0.28)',
       spine: 'rgba(148,163,184,0.7)',
+      checkStroke: '#0F172A',
+      transparent: false,
     },
     mono: {
       bg: '#0F172A',
@@ -38,6 +43,8 @@ export default function Logo({
       lineFaint: 'rgba(255,255,255,0.45)',
       shield: 'rgba(255,255,255,0.18)',
       spine: 'rgba(255,255,255,0.5)',
+      checkStroke: '#0F172A',
+      transparent: false,
     },
     light: {
       bg: '#FFFFFF',
@@ -48,6 +55,38 @@ export default function Logo({
       lineFaint: 'rgba(37,99,235,0.35)',
       shield: 'rgba(37,99,235,0.12)',
       spine: 'rgba(37,99,235,0.45)',
+      checkStroke: '#FFFFFF',
+      transparent: false,
+    },
+    // White ledger + tick, no blue tile (for blue splash)
+    splash: {
+      bg: 'transparent',
+      bgEnd: 'transparent',
+      mark: '#FFFFFF',
+      line: '#FFFFFF',
+      lineMid: 'rgba(255,255,255,0.85)',
+      lineFaint: 'rgba(255,255,255,0.65)',
+      shield: 'transparent',
+      spine: 'rgba(255,255,255,0.9)',
+      checkStroke: '#2563EB',
+      checkFill: '#FFFFFF',
+      transparent: true,
+      paperStroke: '#FFFFFF',
+    },
+    // Paper mark only — no blue tile (for light backgrounds)
+    paper: {
+      bg: 'transparent',
+      bgEnd: 'transparent',
+      mark: '#64748B',
+      line: '#64748B',
+      lineMid: '#94A3B8',
+      lineFaint: '#CBD5E1',
+      shield: '#FFFFFF',
+      spine: '#94A3B8',
+      checkStroke: '#FFFFFF',
+      checkFill: '#2563EB',
+      transparent: true,
+      paperStroke: '#CBD5E1',
     },
   };
 
@@ -63,37 +102,53 @@ export default function Logo({
         xmlns="http://www.w3.org/2000/svg"
         aria-hidden={showWordmark ? true : undefined}
         role={showWordmark ? undefined : 'img'}
-        aria-label={showWordmark ? undefined : 'MediKhata'}
+        aria-label={showWordmark ? undefined : 'KhataApp'}
         className="shrink-0 block"
       >
-        <defs>
-          <linearGradient id={`${uid}-bg`} x1="8" y1="4" x2="56" y2="60" gradientUnits="userSpaceOnUse">
-            <stop stopColor={p.bg} />
-            <stop offset="1" stopColor={p.bgEnd} />
-          </linearGradient>
-        </defs>
-        <rect width="64" height="64" rx="16" fill={`url(#${uid}-bg)`} />
+        {!p.transparent && (
+          <defs>
+            <linearGradient id={`${uid}-bg`} x1="8" y1="4" x2="56" y2="60" gradientUnits="userSpaceOnUse">
+              <stop stopColor={p.bg} />
+              <stop offset="1" stopColor={p.bgEnd} />
+            </linearGradient>
+          </defs>
+        )}
+        {!p.transparent && (
+          <rect width="64" height="64" rx="16" fill={`url(#${uid}-bg)`} />
+        )}
 
-        {/* Khata / ledger — larger and more opaque */}
-        <rect x="13" y="11" width="34" height="40" rx="5" fill={p.shield} stroke={p.mark} strokeWidth="2" strokeOpacity="0.55" />
+        <rect
+          x="13"
+          y="11"
+          width="34"
+          height="40"
+          rx="5"
+          fill={p.shield === 'transparent' ? 'none' : p.shield}
+          stroke={p.paperStroke || p.mark}
+          strokeWidth={p.transparent ? '2.25' : '2'}
+          strokeOpacity={p.transparent ? '1' : '0.55'}
+        />
         <path d="M22 11.5v39" stroke={p.spine} strokeWidth="2" strokeLinecap="round" />
-        {/* Binding holes */}
-        <circle cx="17.5" cy="22" r="1.4" fill={p.mark} fillOpacity="0.55" />
-        <circle cx="17.5" cy="31" r="1.4" fill={p.mark} fillOpacity="0.55" />
-        <circle cx="17.5" cy="40" r="1.4" fill={p.mark} fillOpacity="0.55" />
-        {/* Entry lines */}
+        <circle cx="17.5" cy="22" r="1.4" fill={p.mark} fillOpacity="0.9" />
+        <circle cx="17.5" cy="31" r="1.4" fill={p.mark} fillOpacity="0.9" />
+        <circle cx="17.5" cy="40" r="1.4" fill={p.mark} fillOpacity="0.9" />
         <rect x="26" y="20" width="16" height="2.5" rx="1.25" fill={p.line} />
         <rect x="26" y="27" width="13" height="2.5" rx="1.25" fill={p.lineMid} />
         <rect x="26" y="34" width="15" height="2.5" rx="1.25" fill={p.lineMid} />
         <rect x="26" y="41" width="11" height="2.5" rx="1.25" fill={p.lineFaint} />
 
-        {/* Verified check badge */}
-        <circle cx="47" cy="47" r="11" fill={p.mark} fillOpacity="0.98" />
-        <path d="M41.8 47.2l3.2 3.2 7-7.5" stroke={p.bg} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+        <circle cx="47" cy="47" r="11" fill={p.checkFill || p.mark} fillOpacity="1" />
+        <path
+          d="M41.8 47.2l3.2 3.2 7-7.5"
+          stroke={p.checkStroke || p.bg}
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
       </svg>
       {showWordmark && (
         <span className={`font-bold tracking-tight text-slate-900 ${wordmarkClassName}`}>
-          MediKhata
+          KhataApp
         </span>
       )}
     </span>

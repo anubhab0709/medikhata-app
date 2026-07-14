@@ -17,7 +17,7 @@ const sanitizePhone = (value, countryCode = '91') => {
   return `${cc}${digits}`;
 };
 
-const buildBillMessage = (customer, shopInfo) => {
+const buildBillMessage = (customer, shopInfo, ledgerLink = '') => {
   const transactions = Array.isArray(customer?.transactions) ? customer.transactions : [];
   const latest = [...transactions].sort((a, b) => new Date(a.date) - new Date(b.date));
   const lastDate = latest.at(-1)?.date;
@@ -30,7 +30,9 @@ const buildBillMessage = (customer, shopInfo) => {
     `Current Balance: ${fmtCur(customer.balance)}`,
     lastDate ? `Updated On: ${formatBillDate(lastDate)}` : '',
     '',
-    'Please check your ledger bill. A PDF copy can be downloaded from the app.',
+    ledgerLink
+      ? `View / download your ledger PDF:\n${ledgerLink}`
+      : 'Please check your ledger bill. A PDF copy can be downloaded from the shared ledger link.',
   ].filter(Boolean).join('\n');
 };
 
@@ -61,119 +63,123 @@ const buildPdfMarkup = (customer, shopInfo) => {
   const data = buildLedgerStatementData(customer, shopInfo);
   const rs = data.formatRs;
   const dash = '—';
+  const contactLines = [
+    data.store.address,
+    data.store.email ? `Email: ${data.store.email}` : '',
+    data.store.phone ? `Ph: ${data.store.phone}` : '',
+  ].filter(Boolean);
 
   return `
-    <div id="ledger-pdf-root" style="width:794px;background:#ffffff;padding:36px 40px;font-family:Inter, Arial, Helvetica, sans-serif;color:#111827;box-sizing:border-box;">
+    <div id="ledger-pdf-root" style="width:794px;background:#ffffff;padding:28px 32px;font-family:Inter, Arial, Helvetica, sans-serif;color:#111827;box-sizing:border-box;">
       <div style="width:100%;box-sizing:border-box;">
-        <div style="text-align:center;padding-bottom:10px;border-bottom:2.5px solid #111827;">
-          <div style="font-size:32px;font-weight:800;letter-spacing:-0.01em;line-height:1.15;">${escapeHtml(data.store.name)}</div>
-        </div>
-        <div style="text-align:center;padding:8px 0 12px;border-bottom:2.5px solid #111827;font-size:12px;color:#4b5563;">
-          ${escapeHtml(data.store.address)} • Ph: ${escapeHtml(data.store.phone)}
-        </div>
-
-        <div style="margin-top:16px;border:1.5px solid #111827;padding:10px 14px;text-align:center;font-size:13px;font-weight:800;letter-spacing:0.08em;">
-          CUSTOMER LEDGER STATEMENT
-        </div>
-
-        <div style="margin-top:0;border:1.5px solid #111827;border-top:none;display:flex;">
-          <div style="flex:1;padding:16px 18px;border-right:1px solid #d1d5db;">
-            <div style="font-size:10px;color:#9ca3af;font-weight:700;letter-spacing:0.08em;">BILLED TO</div>
-            <div style="margin-top:8px;font-size:20px;font-weight:800;color:#111827;">${escapeHtml(data.customer.name)}</div>
-            <div style="margin-top:8px;font-size:13px;color:#374151;">${escapeHtml(data.customer.phone)}</div>
-            <div style="margin-top:6px;font-size:12px;color:#6b7280;">Updated : ${escapeHtml(data.meta.lastUpdated)}</div>
+        <div style="text-align:center;">
+          <div style="font-size:20px;font-weight:700;letter-spacing:-0.01em;line-height:1.25;color:#111827;">${escapeHtml(data.store.name)}</div>
+          <div style="margin-top:4px;font-size:11px;font-weight:400;color:#4b5563;line-height:1.45;">
+            ${contactLines.map((line) => escapeHtml(line)).join('<br/>')}
           </div>
-          <div style="width:280px;padding:14px 18px;font-size:12px;">
-            <div style="display:flex;justify-content:space-between;gap:8px;margin-bottom:8px;">
+          <div style="margin-top:10px;font-size:12px;font-weight:600;letter-spacing:0.06em;line-height:1.3;color:#111827;">CUSTOMER LEDGER STATEMENT</div>
+          <div style="height:8px;line-height:8px;font-size:0;">&nbsp;</div>
+          <div style="border-bottom:1.5px solid #111827;"></div>
+        </div>
+
+        <div style="margin-top:12px;border:1px solid #111827;display:flex;">
+          <div style="flex:1;padding:10px 12px;border-right:1px solid #d1d5db;">
+            <div style="font-size:9px;color:#9ca3af;font-weight:600;letter-spacing:0.06em;">BILLED TO</div>
+            <div style="margin-top:4px;font-size:14px;font-weight:600;color:#111827;">${escapeHtml(data.customer.name)}</div>
+            <div style="margin-top:4px;font-size:11px;color:#374151;">${escapeHtml(data.customer.phone)}</div>
+            <div style="margin-top:3px;font-size:10px;color:#6b7280;">Updated : ${escapeHtml(data.meta.lastUpdated)}</div>
+          </div>
+          <div style="width:240px;padding:10px 12px;font-size:11px;">
+            <div style="display:flex;justify-content:space-between;gap:8px;margin-bottom:6px;">
               <span style="color:#6b7280;">Statement ID</span>
-              <span style="font-weight:700;text-align:right;">${escapeHtml(data.meta.invoiceId)}</span>
+              <span style="font-weight:600;text-align:right;">${escapeHtml(data.meta.invoiceId)}</span>
             </div>
-            <div style="display:flex;justify-content:space-between;gap:8px;margin-bottom:8px;">
+            <div style="display:flex;justify-content:space-between;gap:8px;margin-bottom:6px;">
               <span style="color:#6b7280;">Generated</span>
-              <span style="font-weight:600;text-align:right;">${escapeHtml(data.meta.generatedDate)}</span>
+              <span style="font-weight:500;text-align:right;">${escapeHtml(data.meta.generatedDate)}</span>
             </div>
-            <div style="display:flex;justify-content:space-between;gap:8px;margin-bottom:8px;">
+            <div style="display:flex;justify-content:space-between;gap:8px;margin-bottom:6px;">
               <span style="color:#6b7280;">Total Credit</span>
-              <span style="font-weight:700;">${rs(data.summary.totalCredit)}</span>
+              <span style="font-weight:600;">${rs(data.summary.totalCredit)}</span>
             </div>
-            <div style="display:flex;justify-content:space-between;gap:8px;margin-bottom:8px;">
+            <div style="display:flex;justify-content:space-between;gap:8px;margin-bottom:6px;">
               <span style="color:#6b7280;">Total Debit</span>
-              <span style="font-weight:700;">${rs(data.summary.totalDebit)}</span>
+              <span style="font-weight:600;">${rs(data.summary.totalDebit)}</span>
             </div>
             <div style="display:flex;justify-content:space-between;gap:8px;padding-top:6px;border-top:1px solid #e5e7eb;">
-              <span style="font-weight:700;">Net Balance</span>
-              <span style="font-weight:800;">${rs(data.summary.finalBalance)}</span>
+              <span style="font-weight:600;">Net Balance</span>
+              <span style="font-weight:700;">${rs(data.summary.finalBalance)}</span>
             </div>
           </div>
         </div>
 
-        <table style="width:100%;border-collapse:collapse;margin-top:18px;font-size:12px;">
+        <table style="width:100%;border-collapse:collapse;margin-top:12px;font-size:10.5px;">
           <thead>
             <tr style="background:#111827;color:#ffffff;">
-              <th style="padding:10px 8px;text-align:center;font-weight:700;width:48px;">S.NO.</th>
-              <th style="padding:10px 8px;text-align:left;font-weight:700;width:100px;">DATE</th>
-              <th style="padding:10px 8px;text-align:left;font-weight:700;">PARTICULARS</th>
-              <th style="padding:10px 8px;text-align:right;font-weight:700;width:110px;">CREDIT (Rs.)</th>
-              <th style="padding:10px 8px;text-align:right;font-weight:700;width:110px;">DEBIT (Rs.)</th>
-              <th style="padding:10px 8px;text-align:right;font-weight:700;width:110px;">BALANCE (Rs.)</th>
+              <th style="padding:7px 6px;text-align:center;font-weight:600;width:42px;">S.NO.</th>
+              <th style="padding:7px 6px;text-align:left;font-weight:600;width:90px;">DATE</th>
+              <th style="padding:7px 6px;text-align:left;font-weight:600;">PARTICULARS</th>
+              <th style="padding:7px 6px;text-align:right;font-weight:600;width:95px;">CREDIT (Rs.)</th>
+              <th style="padding:7px 6px;text-align:right;font-weight:600;width:95px;">DEBIT (Rs.)</th>
+              <th style="padding:7px 6px;text-align:right;font-weight:600;width:95px;">BALANCE (Rs.)</th>
             </tr>
           </thead>
           <tbody>
             ${data.sections.length === 0 ? `
               <tr>
-                <td colspan="6" style="padding:28px;text-align:center;color:#9ca3af;border:1px solid #e5e7eb;">No transactions</td>
+                <td colspan="6" style="padding:20px;text-align:center;color:#9ca3af;border:1px solid #e5e7eb;">No transactions</td>
               </tr>
             ` : data.sections.map((section) => `
               <tr>
-                <td colspan="6" style="background:#f3f4f6;padding:8px 12px;text-align:center;font-weight:700;color:#374151;border-left:1px solid #e5e7eb;border-right:1px solid #e5e7eb;border-bottom:1px solid #e5e7eb;letter-spacing:0.04em;">${escapeHtml(section.label)}</td>
+                <td colspan="6" style="background:#f3f4f6;padding:6px 10px;text-align:center;font-weight:600;color:#374151;border-left:1px solid #e5e7eb;border-right:1px solid #e5e7eb;border-bottom:1px solid #e5e7eb;letter-spacing:0.03em;font-size:10px;">${escapeHtml(section.label)}</td>
               </tr>
               ${section.rows.map((row) => `
                 <tr>
-                  <td style="padding:9px 8px;text-align:center;color:#6b7280;border:1px solid #e5e7eb;">${escapeHtml(row.serial)}</td>
-                  <td style="padding:9px 8px;color:#4b5563;border:1px solid #e5e7eb;">${escapeHtml(row.dateLabel)}</td>
-                  <td style="padding:9px 8px;color:#111827;border:1px solid #e5e7eb;">${escapeHtml(row.particulars)}</td>
-                  <td style="padding:9px 8px;text-align:right;font-weight:600;border:1px solid #e5e7eb;">${row.credit ? rs(row.credit) : dash}</td>
-                  <td style="padding:9px 8px;text-align:right;font-weight:600;border:1px solid #e5e7eb;">${row.debit ? rs(row.debit) : dash}</td>
-                  <td style="padding:9px 8px;text-align:right;font-weight:700;border:1px solid #e5e7eb;">${rs(row.balance)}</td>
+                  <td style="padding:6px;text-align:center;color:#6b7280;border:1px solid #e5e7eb;">${escapeHtml(row.serial)}</td>
+                  <td style="padding:6px;color:#4b5563;border:1px solid #e5e7eb;">${escapeHtml(row.dateLabel)}</td>
+                  <td style="padding:6px;color:#111827;border:1px solid #e5e7eb;">${escapeHtml(row.particulars)}</td>
+                  <td style="padding:6px;text-align:right;font-weight:500;border:1px solid #e5e7eb;">${row.credit ? rs(row.credit) : dash}</td>
+                  <td style="padding:6px;text-align:right;font-weight:500;border:1px solid #e5e7eb;">${row.debit ? rs(row.debit) : dash}</td>
+                  <td style="padding:6px;text-align:right;font-weight:600;border:1px solid #e5e7eb;">${rs(row.balance)}</td>
                 </tr>
               `).join('')}
             `).join('')}
             <tr style="background:#111827;color:#ffffff;">
-              <td colspan="3" style="padding:10px 12px;font-weight:800;">TOTALS</td>
-              <td style="padding:10px 8px;text-align:right;font-weight:700;">${rs(data.summary.totalCredit)}</td>
-              <td style="padding:10px 8px;text-align:right;font-weight:700;">${rs(data.summary.totalDebit)}</td>
-              <td style="padding:10px 8px;text-align:right;font-weight:800;">${rs(data.summary.finalBalance)}</td>
+              <td colspan="3" style="padding:7px 10px;font-weight:600;">TOTALS</td>
+              <td style="padding:7px 6px;text-align:right;font-weight:600;">${rs(data.summary.totalCredit)}</td>
+              <td style="padding:7px 6px;text-align:right;font-weight:600;">${rs(data.summary.totalDebit)}</td>
+              <td style="padding:7px 6px;text-align:right;font-weight:700;">${rs(data.summary.finalBalance)}</td>
             </tr>
           </tbody>
         </table>
 
-        <div style="margin-top:18px;display:flex;gap:0;border:1.5px solid #111827;">
-          <div style="flex:1;padding:14px 16px;border-right:1px solid #d1d5db;">
-            <div style="display:flex;justify-content:space-between;margin-bottom:10px;font-size:13px;">
+        <div style="margin-top:12px;display:flex;gap:0;border:1px solid #111827;">
+          <div style="flex:1;padding:10px 12px;border-right:1px solid #d1d5db;">
+            <div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:11px;">
               <span style="color:#6b7280;">Total Transactions</span>
-              <span style="font-weight:700;">${data.summary.totalTransactions}</span>
+              <span style="font-weight:600;">${data.summary.totalTransactions}</span>
             </div>
-            <div style="display:flex;justify-content:space-between;font-size:13px;">
+            <div style="display:flex;justify-content:space-between;font-size:11px;">
               <span style="color:#6b7280;">Total Credit</span>
-              <span style="font-weight:700;">${rs(data.summary.totalCredit)}</span>
+              <span style="font-weight:600;">${rs(data.summary.totalCredit)}</span>
             </div>
           </div>
-          <div style="width:280px;padding:14px 16px;">
-            <div style="font-size:10px;color:#9ca3af;font-weight:700;letter-spacing:0.08em;">CLOSING BALANCE</div>
-            <div style="margin-top:8px;border-top:1px solid #e5e7eb;padding-top:8px;font-size:28px;font-weight:800;text-align:right;">${rs(data.summary.finalBalance)}</div>
+          <div style="width:240px;padding:10px 12px;">
+            <div style="font-size:9px;color:#9ca3af;font-weight:600;letter-spacing:0.06em;">CLOSING BALANCE</div>
+            <div style="margin-top:4px;border-top:1px solid #e5e7eb;padding-top:6px;font-size:18px;font-weight:700;text-align:right;">${rs(data.summary.finalBalance)}</div>
           </div>
         </div>
 
-        <div style="margin-top:20px;display:flex;justify-content:space-between;align-items:flex-end;gap:16px;">
-          <div style="font-size:11px;color:#6b7280;font-style:italic;max-width:360px;">
+        <div style="margin-top:14px;display:flex;justify-content:space-between;align-items:flex-end;gap:16px;">
+          <div style="font-size:10px;color:#6b7280;font-style:italic;max-width:360px;">
             This is a computer-generated statement and does not require a physical signature.
           </div>
-          <div style="width:200px;text-align:center;">
-            <div style="border-top:1px solid #111827;padding-top:6px;font-size:12px;color:#374151;">Authorised Signatory</div>
+          <div style="width:180px;text-align:center;">
+            <div style="border-top:1px solid #111827;padding-top:4px;font-size:11px;color:#374151;">Authorised Signatory</div>
           </div>
         </div>
 
-        <div style="margin-top:28px;padding-top:10px;border-top:1px solid #d1d5db;display:flex;justify-content:space-between;font-size:11px;color:#6b7280;">
+        <div style="margin-top:18px;padding-top:8px;border-top:1px solid #d1d5db;display:flex;justify-content:space-between;font-size:10px;color:#6b7280;">
           <span>${escapeHtml(data.store.name)} — Customer Ledger</span>
           <span>Page 1 of 1</span>
           <span>System generated document.</span>
@@ -333,9 +339,12 @@ export const downloadCustomerLedgerPdf = async (customer, shopInfo) => {
   }
 };
 
-export const openBillOnWhatsApp = (customer, shopInfo) => {
+export const openBillOnWhatsApp = (customer, shopInfo, ledgerLink = '') => {
   const phone = sanitizePhone(customer.phone, shopInfo?.whatsappCountryCode);
-  const message = encodeURIComponent(buildBillMessage(customer, shopInfo));
+  const link = ledgerLink || (customer?.ledgerShareToken
+    ? `${window.location.origin}/l/${customer.ledgerShareToken}`
+    : '');
+  const message = encodeURIComponent(buildBillMessage(customer, shopInfo, link));
   const url = phone ? `https://wa.me/${phone}?text=${message}` : `https://wa.me/?text=${message}`;
   window.open(url, '_blank', 'noopener,noreferrer');
 };

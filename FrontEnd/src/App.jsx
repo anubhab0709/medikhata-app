@@ -44,11 +44,13 @@ const RemindersPage = REMINDERS_FEATURE_ENABLED
 const ReminderModal = REMINDERS_FEATURE_ENABLED
   ? lazy(() => import('./components/ReminderModal.jsx'))
   : null;
+const PublicLedgerPage = lazy(() => import('./pages/PublicLedgerPage.jsx'));
 
 const DEFAULT_SHOP = {
   shopName: '',
   ownerName: '',
   shopPhone: '',
+  shopEmail: '',
   shopAddress: '',
   role: 'owner',
   brandName: '',
@@ -131,6 +133,7 @@ function LedgerRouteView({ customers, shopInfo, onBack, onAddTxn, onEditTxn, onD
   return (
     <LedgerPage
       customer={activeCust}
+      customers={customers}
       shopInfo={shopInfo}
       onBack={onBack}
       onAddTxn={onAddTxn}
@@ -268,6 +271,22 @@ function AppShell({ initialShopInfo, onReady }) {
     }
   }, [location.pathname, navigateTo, refreshDashboardExtras]);
 
+  const deleteCustomers = useCallback(async (custIds) => {
+    const ids = Array.isArray(custIds) ? custIds.map(String).filter(Boolean) : [];
+    if (!ids.length) return;
+    const results = await Promise.allSettled(ids.map((id) => customerApi.remove(id)));
+    const removed = new Set(
+      ids.filter((_, i) => results[i]?.status === 'fulfilled'),
+    );
+    if (removed.size === 0) {
+      const firstError = results.find(r => r.status === 'rejected')?.reason;
+      throw new Error(firstError?.message || 'Unable to delete customers');
+    }
+    setCustomers(prev => prev.filter(c => !removed.has(String(c.id))));
+    setReminderCust(prev => (prev && removed.has(String(prev.id)) ? null : prev));
+    refreshDashboardExtras();
+  }, [refreshDashboardExtras]);
+
   const editTxn = useCallback(async (custId, nextTxn) => {
     const updated = await transactionApi.update(custId, nextTxn.id, nextTxn);
     setCustomers(prev => prev.map(c => (c.id !== custId ? c : updated.customer)));
@@ -298,6 +317,17 @@ function AppShell({ initialShopInfo, onReady }) {
   const openRem = useCallback((c) => {
     if (!REMINDERS_FEATURE_ENABLED) return;
     setReminderCust(c);
+    // Prefetch share token so WhatsApp message includes ledger PDF link
+    if (!c?.ledgerShareToken && c?.id) {
+      customerApi.ensureShareLink(c.id)
+        .then((res) => {
+          const token = res?.token || res?.customer?.ledgerShareToken;
+          if (!token) return;
+          setCustomers((prev) => prev.map((x) => (x.id === c.id ? { ...x, ledgerShareToken: token } : x)));
+          setReminderCust((prev) => (prev && prev.id === c.id ? { ...prev, ledgerShareToken: token } : prev));
+        })
+        .catch(() => {});
+    }
   }, []);
   const closeRem = useCallback(() => setReminderCust(null), []);
 
@@ -394,7 +424,7 @@ function AppShell({ initialShopInfo, onReady }) {
                 <Suspense fallback={<PageFallback />}>
                   <Routes>
                     <Route path="dashboard" element={<DashboardPage customers={customers} monthlySummary={monthlySummary} recentActivity={recentActivity} todayActivity={todayActivity} onNavigate={navigate} onAddCust={() => setShowAddCust(true)} onOpenCustomer={selectCust} shopInfo={shopInfo} />} />
-                    <Route path="customers" element={<CustomerListPage customers={customers} onSelect={selectCust} onAddCust={() => setShowAddCust(true)} />} />
+                    <Route path="customers" element={<CustomerListPage customers={customers} onSelect={selectCust} onAddCust={() => setShowAddCust(true)} onDeleteCustomers={deleteCustomers} />} />
                     <Route path="customers/:id" element={<LedgerRouteView customers={customers} shopInfo={shopInfo} onBack={() => navigate('customers')} onAddTxn={addTxn} onEditTxn={editTxn} onDeleteTxn={deleteTxn} onDeleteCustomer={deleteCustomer} onOpenReminder={openRem} onEditCustomer={editCustomer} setCustomers={setCustomers} />} />
                     {REMINDERS_FEATURE_ENABLED && RemindersPage ? (
                       <Route path="reminders" element={<RemindersPage customers={customers} shopInfo={shopInfo} onOpenReminder={openRem} onSendSelectedReminders={startBulkReminders} />} />
@@ -409,7 +439,7 @@ function AppShell({ initialShopInfo, onReady }) {
           </div>
         </main>
         <BottomNav active={navActive} onNavigate={navigate} onAdd={() => setShowAddCust(true)} dueCount={dueCount} isModalOpen={showAddCust || !!reminderCust || isLedgerDetail} />
-        {showAddCust && <AddCustModal onClose={() => setShowAddCust(false)} onAdd={addCust} />}
+        {showAddCust && <AddCustModal onClose={() => setShowAddCust(false)} onAdd={addCust} customers={customers} />}
         {REMINDERS_FEATURE_ENABLED && ReminderModal && reminderCust && (
           <Suspense fallback={null}>
             <ReminderModal customer={reminderCust} onClose={closeRem} onSent={markReminded} shopInfo={shopInfo} />
@@ -488,6 +518,7 @@ export default function App() {
       <Router>
         <Suspense fallback={<PageFallback />}>
           <Routes>
+            <Route path="/l/:token" element={<PublicLedgerPage />} />
             <Route element={<PublicOnlyRoute />}>
               <Route path="/login" element={<AuthPage key="login" mode="login" onAuthSuccess={handleAuthSuccess} />} />
               <Route path="/signup" element={<AuthPage key="signup" mode="signup" onAuthSuccess={handleAuthSuccess} />} />

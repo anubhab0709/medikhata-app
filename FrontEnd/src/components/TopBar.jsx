@@ -25,7 +25,7 @@ export default function TopBar({ active, onNavigate, shopInfo, dueCount, onLogou
           <div className="flex items-center gap-3 min-w-0 justify-self-start">
             <Logo size={34} />
             <div className="min-w-0">
-              <p className="font-bold text-slate-900 text-sm leading-none tracking-tight">MediKhata</p>
+              <p className="font-bold text-slate-900 text-sm leading-none tracking-tight">KhataApp</p>
               <p className="text-xs text-slate-500 mt-1 truncate max-w-[200px]">{shopName}</p>
             </div>
           </div>

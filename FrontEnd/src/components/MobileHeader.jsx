@@ -13,7 +13,7 @@ export default function MobileHeader({ shopInfo, onLogout }) {
       <div className="flex items-center gap-2 min-w-0">
         <Logo size={28} />
         <div className="min-w-0">
-          <p className="font-bold text-slate-900 text-[13px] leading-tight tracking-tight">MediKhata</p>
+          <p className="font-bold text-slate-900 text-[13px] leading-tight tracking-tight">KhataApp</p>
           <p className="text-[10px] text-slate-500 truncate max-w-[150px]">{shopName}</p>
         </div>
       </div>

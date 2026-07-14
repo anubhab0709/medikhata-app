@@ -1,30 +1,55 @@
 import { useState } from 'react';
 import Ico from './Ico.jsx';
 import { useLang } from '../context/lang.jsx';
+import {
+  normalizePhoneDigits,
+  validateCustomerForm,
+  findDuplicateCustomerByPhone,
+} from '../utils/customerValidation.js';
 
-export default function EditCustModal({ customer, onClose, onSave }) {
+export default function EditCustModal({ customer, customers = [], onClose, onSave }) {
   const t = useLang();
-  const [name, setName] = useState(customer?.name || '');
-  const [phone, setPhone] = useState(customer?.phone || '');
+  const [name, setName] = useState(String(customer?.name || '').slice(0, 25));
+  const [phone, setPhone] = useState(normalizePhoneDigits(customer?.phone || '').slice(0, 10));
   const [area, setArea] = useState(customer?.area || '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
-  const fields = [
-    { l: t.fullName, v: name, s: setName, p: t.namePlaceholder, tp: 'text', auto: 'name', mode: 'text' },
-    { l: t.phone, v: phone, s: setPhone, p: t.phonePlaceholder, tp: 'tel', auto: 'tel', mode: 'tel' },
-    { l: t.area, v: area, s: setArea, p: t.areaPlaceholder, tp: 'text', auto: 'street-address', mode: 'text' },
-  ];
+  const setNameSafe = (value) => {
+    setName(String(value || '').slice(0, 25));
+    setError('');
+  };
+
+  const setPhoneSafe = (value) => {
+    const raw = String(value || '').replace(/\D/g, '');
+    if (raw.length <= 10) setPhone(raw.slice(0, 10));
+    else setPhone(normalizePhoneDigits(value).slice(0, 10));
+    setError('');
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!name.trim() || saving) return;
+    if (saving) return;
+
+    const validationError = validateCustomerForm({ name, phone });
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
+    const phoneDigits = normalizePhoneDigits(phone);
+    const duplicate = findDuplicateCustomerByPhone(customers, phoneDigits, customer?.id);
+    if (duplicate) {
+      setError(`A customer with this number already exists (${duplicate.name})`);
+      return;
+    }
+
     setSaving(true);
     setError('');
     try {
       await onSave({
         name: name.trim(),
-        phone: phone.trim(),
+        phone: phoneDigits,
         area: area.trim(),
       });
       onClose();
@@ -54,20 +79,44 @@ export default function EditCustModal({ customer, onClose, onSave }) {
         </div>
 
         <form onSubmit={handleSubmit} className="p-5 space-y-3">
-          {fields.map(f => (
-            <div key={f.l} className="space-y-1">
-              <label className="block text-[11px] font-medium text-gray-600 mb-1">{f.l}</label>
-              <input
-                type={f.tp}
-                value={f.v}
-                onChange={e => f.s(e.target.value)}
-                placeholder={f.p}
-                autoComplete={f.auto}
-                inputMode={f.mode}
-                className="input"
-              />
-            </div>
-          ))}
+          <div className="space-y-1">
+            <label className="block text-[11px] font-medium text-gray-600 mb-1">{t.fullName}</label>
+            <input
+              type="text"
+              value={name}
+              onChange={e => setNameSafe(e.target.value)}
+              placeholder={t.namePlaceholder}
+              autoComplete="name"
+              maxLength={25}
+              className="input"
+            />
+            <p className="text-[10px] text-slate-400">{name.trim().length}/25 characters · letters only</p>
+          </div>
+          <div className="space-y-1">
+            <label className="block text-[11px] font-medium text-gray-600 mb-1">{t.phone}</label>
+            <input
+              type="tel"
+              value={phone}
+              onChange={e => setPhoneSafe(e.target.value)}
+              placeholder="10 digit mobile number"
+              autoComplete="tel"
+              inputMode="numeric"
+              maxLength={10}
+              className="input"
+            />
+            <p className="text-[10px] text-slate-400">{phone.length}/10 digits</p>
+          </div>
+          <div className="space-y-1">
+            <label className="block text-[11px] font-medium text-gray-600 mb-1">{t.area}</label>
+            <input
+              type="text"
+              value={area}
+              onChange={e => setArea(e.target.value)}
+              placeholder={t.areaPlaceholder}
+              autoComplete="street-address"
+              className="input"
+            />
+          </div>
           {error && <p className="text-xs text-red-600 font-medium">{error}</p>}
           <button type="submit" disabled={!name.trim() || saving} className="btn w-full mt-2">
             <Ico.Check className="w-4 h-4" /> {saving ? 'Saving...' : 'Save changes'}

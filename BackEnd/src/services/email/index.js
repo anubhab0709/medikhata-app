@@ -8,11 +8,21 @@ function cleanEnv(value) {
 }
 
 function getFromAddress() {
+  // Prefer a verified custom domain address (spam risk if using onboarding@resend.dev)
   return cleanEnv(process.env.RESEND_FROM) || 'KhataApp <onboarding@resend.dev>';
 }
 
 function getApiKey() {
   return cleanEnv(process.env.RESEND_API_KEY);
+}
+
+function getReplyTo() {
+  return (
+    cleanEnv(process.env.RESEND_REPLY_TO) ||
+    cleanEnv(process.env.SUPPORT_CONTACT_EMAIL) ||
+    cleanEnv(process.env.SUPPORT_EMAIL) ||
+    undefined
+  );
 }
 
 /** Inbox where support form messages are delivered (Resend-verified mailbox). */
@@ -39,14 +49,28 @@ export function isEmailConfigured() {
   return Boolean(getResend());
 }
 
-function logDevMail({ to, subject, html }) {
+function warnSharedSender(from) {
+  if (/@resend\.dev\b/i.test(from) || /onboarding@/i.test(from)) {
+    console.warn(
+      '[email] Sending from a shared/test address can land OTP mail in spam. ' +
+        'Verify your domain in Resend and set RESEND_FROM like: KhataApp <otp@mail.yourdomain.com>'
+    );
+  }
+}
+
+function logDevMail({ to, subject, text, html }) {
   console.log(`[email:dev] To: ${to}\nSubject: ${subject}`);
-  const otpMatch = html.match(/class="otp">(\d{6})</);
-  if (otpMatch) console.log(`[email:dev] OTP: ${otpMatch[1]}`);
+  if (text) {
+    const otpMatch = text.match(/Your code:\s*(\d{6})/);
+    if (otpMatch) console.log(`[email:dev] OTP: ${otpMatch[1]}`);
+  } else {
+    const otpMatch = html?.match(/class="otp">(\d{6})</);
+    if (otpMatch) console.log(`[email:dev] OTP: ${otpMatch[1]}`);
+  }
   return { id: `dev-${Date.now()}`, provider: 'dev' };
 }
 
-async function sendMail({ to, subject, html, replyTo }) {
+async function sendMail({ to, subject, html, text, replyTo }) {
   const from = getFromAddress();
   const resend = getResend();
   const allowDevFallback = process.env.EMAIL_DEV_FALLBACK === 'true' && process.env.NODE_ENV !== 'production';
@@ -54,12 +78,14 @@ async function sendMail({ to, subject, html, replyTo }) {
   if (!resend) {
     if (allowDevFallback) {
       console.warn('[email] RESEND_API_KEY missing — using console fallback. Add your key to BackEnd/.env');
-      return logDevMail({ to, subject, html });
+      return logDevMail({ to, subject, text, html });
     }
     throw new Error(
       'Email is not configured. Set RESEND_API_KEY in BackEnd/.env and restart the server.'
     );
   }
+
+  warnSharedSender(from);
 
   try {
     const payload = {
@@ -67,8 +93,15 @@ async function sendMail({ to, subject, html, replyTo }) {
       to: [to],
       subject,
       html,
+      // Plain-text part strongly improves inbox placement (Gmail/Yahoo)
+      text: text || undefined,
+      // No open/click tracking — critical for OTP / transactional mail
+      headers: {
+        'X-Entity-Ref-ID': `khataapp-${Date.now()}`,
+      },
     };
-    if (replyTo) payload.replyTo = replyTo;
+    const resolvedReplyTo = replyTo || getReplyTo();
+    if (resolvedReplyTo) payload.replyTo = resolvedReplyTo;
 
     const { data, error } = await resend.emails.send(payload);
 
@@ -87,26 +120,27 @@ async function sendMail({ to, subject, html, replyTo }) {
 
 export const emailService = {
   async sendVerificationOtp({ to, name, otp }) {
-    const { subject, html } = verificationOtpEmail({ name, otp });
-    return sendMail({ to, subject, html });
+    const { subject, html, text } = verificationOtpEmail({ name, otp });
+    return sendMail({ to, subject, html, text });
   },
 
   async sendResetOtp({ to, name, otp }) {
-    const { subject, html } = resetOtpEmail({ name, otp });
-    return sendMail({ to, subject, html });
+    const { subject, html, text } = resetOtpEmail({ name, otp });
+    return sendMail({ to, subject, html, text });
   },
 
   async sendWelcome({ to, name }) {
-    const { subject, html } = welcomeEmail({ name });
-    return sendMail({ to, subject, html });
+    const { subject, html, text } = welcomeEmail({ name });
+    return sendMail({ to, subject, html, text });
   },
 
   async sendSupportMessage({ name, email, message, shopName }) {
-    const { subject, html } = supportMessageEmail({ name, email, message, shopName });
+    const { subject, html, text } = supportMessageEmail({ name, email, message, shopName });
     return sendMail({
       to: getSupportInbox(),
       subject,
       html,
+      text,
       replyTo: email || undefined,
     });
   },

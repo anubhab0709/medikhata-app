@@ -463,14 +463,30 @@ function AppShell({ initialShopInfo, onReady }) {
   );
 }
 
+/** Public ledger must skip splash — otherwise a logged-in/PWA session never sets bootReady and the link looks “broken”. */
+function isPublicLedgerPath() {
+  try {
+    return window.location.pathname.startsWith('/l/');
+  } catch {
+    return false;
+  }
+}
+
 export default function App() {
   const [initialShopInfo, setInitialShopInfo] = useState(DEFAULT_SHOP);
-  const [bootReady, setBootReady] = useState(false);
-  const [showSplash, setShowSplash] = useState(true);
+  const publicLedgerBoot = isPublicLedgerPath();
+  const [bootReady, setBootReady] = useState(publicLedgerBoot);
+  const [showSplash, setShowSplash] = useState(!publicLedgerBoot);
   const minSplashMs = 900;
 
   useEffect(() => {
-    // Public routes: brief branded splash, then login/signup
+    // Never block shared ledger links behind the splash
+    if (isPublicLedgerPath()) {
+      setBootReady(true);
+      setShowSplash(false);
+      return undefined;
+    }
+    // Public auth routes: brief branded splash, then login/signup
     if (isAuthTokenValid()) return undefined;
     const t = window.setTimeout(() => setBootReady(true), minSplashMs);
     return () => window.clearTimeout(t);

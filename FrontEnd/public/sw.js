@@ -1,5 +1,5 @@
 /* KhataApp service worker — cache shell for offline launch */
-const CACHE = 'khataapp-shell-v6';
+const CACHE = 'khataapp-shell-v7';
 const PRECACHE = ['/', '/index.html', '/manifest.webmanifest', '/favicon.svg', '/favicon-32.png', '/pwa-192.png', '/pwa-maskable-192.png'];
 
 self.addEventListener('install', (event) => {
@@ -23,7 +23,8 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
 
-  if (url.pathname.startsWith('/api')) return;
+  // Never intercept API or public customer ledger links — always hit network
+  if (url.pathname.startsWith('/api') || url.pathname.startsWith('/l/')) return;
 
   if (request.mode === 'navigate') {
     event.respondWith(

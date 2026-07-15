@@ -13,12 +13,18 @@ export default function PublicLedgerPage() {
   const [downloading, setDownloading] = useState(false);
 
   useEffect(() => {
+    document.title = 'KhataApp — Customer Ledger';
     let active = true;
     (async () => {
       try {
         setLoading(true);
         setError('');
-        const data = await publicApi.getLedger(token);
+        const clean = String(token || '').trim();
+        if (!clean) {
+          if (active) setError('Invalid ledger link');
+          return;
+        }
+        const data = await publicApi.getLedger(clean);
         if (active) setPayload(data);
       } catch (err) {
         if (active) setError(err?.message || 'Unable to open ledger');

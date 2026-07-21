@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { authApi, clearAuthToken, supportApi } from '../utils/api.js';
 import { REMINDER_AUTOMATION_ENABLED } from '../config/features.js';
@@ -342,12 +343,16 @@ export default function SettingsPage({ shopInfo, setShopInfo }) {
         )}
       </div>
 
-      {showContact && (
-        <div className="modal-backdrop fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+      {showContact && createPortal(
+        <div className="modal-backdrop fixed inset-0 z-[90] flex items-end sm:items-center justify-center p-0 sm:p-4">
           <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setShowContact(false)} aria-hidden="true" />
-          <div className="modal-panel relative bg-white w-full max-w-sm rounded-t-2xl sm:rounded-2xl shadow-xl overflow-hidden safe-area-pb" role="dialog" aria-modal="true">
-            <div className="mx-auto mt-2 h-1 w-10 rounded-full bg-slate-200 sm:hidden" aria-hidden="true" />
-            <div className="flex items-center justify-between px-5 pt-4 sm:pt-5 pb-3 border-b border-slate-100">
+          <div
+            className="modal-panel relative bg-white w-full max-w-sm rounded-t-2xl sm:rounded-2xl shadow-xl overflow-hidden flex flex-col max-h-[min(92dvh,92vh)]"
+            role="dialog"
+            aria-modal="true"
+          >
+            <div className="mx-auto mt-2 h-1 w-10 rounded-full bg-slate-200 sm:hidden shrink-0" aria-hidden="true" />
+            <div className="flex items-center justify-between px-5 pt-4 sm:pt-5 pb-3 border-b border-slate-100 shrink-0">
               <div>
                 <h2 className="text-sm font-semibold text-slate-900">Contact us</h2>
                 <p className="text-[11px] text-slate-500 mt-0.5">We&apos;d love to hear from you</p>
@@ -355,48 +360,53 @@ export default function SettingsPage({ shopInfo, setShopInfo }) {
               <button type="button" onClick={() => setShowContact(false)} className="w-7 h-7 rounded-md bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500">&times;</button>
             </div>
             {contactSent ? (
-              <div className="p-6 text-center">
+              <div className="p-6 text-center pb-[max(1.25rem,env(safe-area-inset-bottom))]">
                 <p className="text-base font-semibold text-slate-900 mb-1">Message sent</p>
                 <p className="text-xs text-slate-500 mb-5">We&apos;ll get back to you soon.</p>
                 <button type="button" onClick={() => setShowContact(false)} className="btn w-full">Done</button>
               </div>
             ) : (
-              <div className="p-5 space-y-4">
-                <div>
-                  <label className="label">Your name</label>
-                  <input type="text" value={contactForm.name} onChange={(e) => setContactForm(prev => ({ ...prev, name: e.target.value }))} className="input" placeholder="Enter your name" />
+              <>
+                <div className="p-5 space-y-4 overflow-y-auto flex-1 min-h-0">
+                  <div>
+                    <label className="label">Your name</label>
+                    <input type="text" value={contactForm.name} onChange={(e) => setContactForm(prev => ({ ...prev, name: e.target.value }))} className="input" placeholder="Enter your name" />
+                  </div>
+                  <div>
+                    <label className="label">Email</label>
+                    <input type="email" value={contactForm.email} onChange={(e) => setContactForm(prev => ({ ...prev, email: e.target.value }))} className="input" placeholder="you@example.com" />
+                  </div>
+                  <div>
+                    <label className="label">Message</label>
+                    <textarea value={contactForm.message} onChange={(e) => setContactForm(prev => ({ ...prev, message: e.target.value }))} className="input resize-none !h-auto py-2.5" rows={3} placeholder="How can we help?" />
+                  </div>
                 </div>
-                <div>
-                  <label className="label">Email</label>
-                  <input type="email" value={contactForm.email} onChange={(e) => setContactForm(prev => ({ ...prev, email: e.target.value }))} className="input" placeholder="you@example.com" />
+                <div className="shrink-0 px-5 pt-3 border-t border-slate-100 bg-white pb-[max(1rem,env(safe-area-inset-bottom))]">
+                  <button
+                    type="button"
+                    disabled={!contactForm.name.trim() || !contactForm.message.trim() || contactSubmitting}
+                    className="btn w-full"
+                    onClick={async () => {
+                      setContactSubmitting(true);
+                      setPageError('');
+                      try {
+                        await supportApi.sendMessage(contactForm);
+                        setContactSent(true);
+                      } catch (error) {
+                        setPageError(error?.message || 'Failed to send message');
+                      } finally {
+                        setContactSubmitting(false);
+                      }
+                    }}
+                  >
+                    {contactSubmitting ? 'Sending...' : 'Send message'}
+                  </button>
                 </div>
-                <div>
-                  <label className="label">Message</label>
-                  <textarea value={contactForm.message} onChange={(e) => setContactForm(prev => ({ ...prev, message: e.target.value }))} className="input resize-none !h-auto py-2.5" rows={3} placeholder="How can we help?" />
-                </div>
-                <button
-                  type="button"
-                  disabled={!contactForm.name.trim() || !contactForm.message.trim() || contactSubmitting}
-                  className="btn w-full"
-                  onClick={async () => {
-                    setContactSubmitting(true);
-                    setPageError('');
-                    try {
-                      await supportApi.sendMessage(contactForm);
-                      setContactSent(true);
-                    } catch (error) {
-                      setPageError(error?.message || 'Failed to send message');
-                    } finally {
-                      setContactSubmitting(false);
-                    }
-                  }}
-                >
-                  {contactSubmitting ? 'Sending...' : 'Send message'}
-                </button>
-              </div>
+              </>
             )}
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );

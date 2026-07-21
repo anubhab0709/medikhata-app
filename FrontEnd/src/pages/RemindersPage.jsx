@@ -1,4 +1,5 @@
 import { useMemo, useState, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import Ico from '../utils/icons.jsx';
 import PageHero from '../components/PageHero.jsx';
 import SearchInput from '../components/SearchInput.jsx';
@@ -307,12 +308,18 @@ export default function RemindersPage({ customers, shopInfo, onOpenReminder, onS
         )}
       </div>
 
-      {showBulkModal && selectedCustomers.length > 0 && (
-        <div className="modal-backdrop fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+      {showBulkModal && selectedCustomers.length > 0 && createPortal(
+        <div className="modal-backdrop fixed inset-0 z-[90] flex items-end sm:items-center justify-center p-0 sm:p-4">
           <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setShowBulkModal(false)} aria-hidden="true" />
-          <div className="modal-panel relative w-full max-w-4xl bg-white rounded-t-2xl sm:rounded-2xl shadow-xl max-h-[92vh] flex flex-col overflow-hidden safe-area-pb" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="bulk-reminder-title">
-            <div className="mx-auto mt-2 h-1 w-10 rounded-full bg-slate-200 sm:hidden" aria-hidden="true" />
-            <div className="flex items-center justify-between px-4 sm:px-5 py-3 sm:py-4 border-b border-slate-100">
+          <div
+            className="modal-panel relative w-full max-w-4xl bg-white rounded-t-2xl sm:rounded-2xl shadow-xl max-h-[min(92dvh,92vh)] flex flex-col overflow-hidden"
+            onClick={e => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="bulk-reminder-title"
+          >
+            <div className="mx-auto mt-2 h-1 w-10 rounded-full bg-slate-200 sm:hidden shrink-0" aria-hidden="true" />
+            <div className="flex items-center justify-between px-4 sm:px-5 py-3 sm:py-4 border-b border-slate-100 shrink-0">
               <div>
                 <p className="section-label text-primary-600">Bulk reminder</p>
                 <h2 id="bulk-reminder-title" className="section-heading mt-0.5">{selectedCustomers.length} customers selected</h2>
@@ -322,8 +329,8 @@ export default function RemindersPage({ customers, shopInfo, onOpenReminder, onS
               </button>
             </div>
 
-            <div className="flex-1 overflow-hidden grid grid-cols-1 md:grid-cols-12 gap-0">
-              <div className="md:col-span-5 border-b md:border-b-0 md:border-r border-slate-100 bg-slate-50 overflow-y-auto px-4 py-4 space-y-2 max-h-[35vh] md:max-h-full">
+            <div className="flex-1 min-h-0 overflow-hidden grid grid-cols-1 md:grid-cols-12 gap-0">
+              <div className="md:col-span-5 border-b md:border-b-0 md:border-r border-slate-100 bg-slate-50 overflow-y-auto px-4 py-4 space-y-2 max-h-[28vh] md:max-h-full">
                 {selectedCustomers.map(c => {
                   const days = c.lastReminded ? daysDiff(c.lastReminded) : null;
                   const lastReminder = days === null ? t.neverReminded : days === 0 ? `✓ ${t.today}` : `${days} ${t.daysAgo}`;
@@ -347,7 +354,7 @@ export default function RemindersPage({ customers, shopInfo, onOpenReminder, onS
                 })}
               </div>
 
-              <div className="md:col-span-7 bg-white px-5 py-5 overflow-y-auto max-h-[45vh] md:max-h-full">
+              <div className="md:col-span-7 bg-white px-5 py-5 overflow-y-auto min-h-0">
                 <div className="space-y-5">
                   <div className="card-due flex items-center justify-between px-4 py-3">
                     <div>
@@ -393,15 +400,18 @@ export default function RemindersPage({ customers, shopInfo, onOpenReminder, onS
                       </div>
                     )}
                   </div>
-
-                  <button type="button" onClick={sendSelected} className="btn w-full">
-                    <PaperPlaneIcon /> Send reminders
-                  </button>
                 </div>
               </div>
             </div>
+
+            <div className="shrink-0 border-t border-slate-100 bg-white px-4 sm:px-5 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
+              <button type="button" onClick={sendSelected} className="btn w-full">
+                <PaperPlaneIcon /> Send reminders
+              </button>
+            </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );
